@@ -1,13 +1,17 @@
 package Auth0
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
+	"github.com/jpurdie/authapi"
 	"github.com/segmentio/encoding/json"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 var ctx = context.Background()
@@ -49,11 +53,11 @@ func FetchAccessToken() (string, error) {
 	req.Header.Add("content-type", "application/json")
 
 	res, _ := http.DefaultClient.Do(req)
-
+	fmt.Println("HTTP Response Status:", res.StatusCode, http.StatusText(res.StatusCode))
+	if res.StatusCode != 200 {
+		return "", errors.New("Unable to get access token")
+	}
 	defer res.Body.Close()
-	//	body, _ := ioutil.ReadAll(res.Body)
-
-	//	fmt.Println(string(body))
 
 	var atr accessTokenResp
 	json.NewDecoder(res.Body).Decode(&atr)
@@ -62,7 +66,7 @@ func FetchAccessToken() (string, error) {
 
 	if res.Body != nil {
 
-		err := rdb.Set(ctx, "auth0_access_token", atr.AccessToken, 30000).Err()
+		err := rdb.Set(ctx, "auth0_access_token", atr.AccessToken, time.Duration(30)*time.Second).Err()
 		if err != nil {
 			return "", err
 		}
@@ -71,11 +75,61 @@ func FetchAccessToken() (string, error) {
 
 }
 
-func CreateUser() error {
+type appMetaData struct {
+}
+type createUserReq struct {
+	Email         string      `json:"email"`
+	Blocked       bool        `json:"blocked"`
+	EmailVerified bool        `json:"email_verified"`
+	AppMetaData   appMetaData `json:"app_metadata"`
+	GivenName     string      `json:"given_name"`
+	FamilyName    string      `json:"family_name"`
+	Name          string      `json:"name"`
+	Nickname      string      `json:"nickname"`
+	Connection    string      `json:"connection"`
+	Password      string      `json:"password"`
+	VerifyEmail   bool        `json:"verify_email"`
+}
+type createUserResp struct {
+	UserId string `json:"user_id"`
+}
+
+func CreateUser(u authapi.User) (string, error) {
 	accessToken, err := FetchAccessToken()
-	if err != nil {
-		return err
+	if err != nil || accessToken == "" {
+		return "", err
 	}
-	print(accessToken)
-	return nil
+	a := appMetaData{}
+	userReq := createUserReq{
+		Email:         u.Email,
+		Blocked:       false,
+		EmailVerified: false,
+		AppMetaData:   a,
+		GivenName:     u.FirstName,
+		FamilyName:    u.LastName,
+		Name:          u.FirstName + " " + u.LastName,
+		Nickname:      u.FirstName,
+		Connection:    "VitaeDB",
+		Password:      u.Password,
+		VerifyEmail:   false,
+	}
+
+	url := "https://" + os.Getenv("AUTH0_DOMAIN") + "/api/v2/users"
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(userReq)
+	req, _ := http.NewRequest("POST", url, b)
+
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	res, _ := http.DefaultClient.Do(req)
+
+	defer res.Body.Close()
+
+	var cur createUserResp
+	json.NewDecoder(res.Body).Decode(&cur)
+
+	fmt.Println("cur.UserId", cur.UserId)
+	return cur.UserId, nil
+
 }

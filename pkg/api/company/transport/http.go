@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/company"
 	"github.com/jpurdie/authapi/pkg/utl/Auth0"
@@ -161,9 +162,7 @@ func (h HTTP) create(c echo.Context) error {
 		return ErrPasswordsNotMaching
 	}
 
-	_ = Auth0.CreateUser()
-
-	company := authapi.Company{Name: r.CompanyName}
+	company := authapi.Company{Name: r.CompanyName, Active: true}
 
 	u := authapi.User{
 		Password:   r.Password,
@@ -171,8 +170,13 @@ func (h HTTP) create(c echo.Context) error {
 		FirstName:  r.FirstName,
 		LastName:   r.LastName,
 		ExternalID: "",
+		Active:     true,
 	}
-	cu := authapi.CompanyUser{Company: &company, User: &u}
+	x := uuid.New()
+	cu := authapi.CompanyUser{Company: &company, User: &u, UUID: x}
+
+	externalID, err := Auth0.CreateUser(u)
+	u.ExternalID = externalID
 
 	companyUser, err := h.svc.Create(c, cu)
 
