@@ -15,6 +15,9 @@ import (
 )
 
 var ctx = context.Background()
+var (
+	ErrUnableToReachAuth0 = errors.New("Unable to reach authentication service")
+)
 
 func buildRedisClient() *redis.Client {
 	return redis.NewClient(&redis.Options{
@@ -25,16 +28,19 @@ func buildRedisClient() *redis.Client {
 }
 
 type accessTokenResp struct {
-	AccessToken string `json:"access_token"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
+	TokenType    string `json:"token_type"`
+	Expires      string `json:"expires_in"`
 }
 
 func FetchAccessToken() (string, error) {
 	rdb := buildRedisClient()
 	accessToken, err := rdb.Get(ctx, "auth0_access_token").Result()
-	//if err != nil {
-	//	panic(err)
-	//}
-	fmt.Println(err)
+	if err != nil {
+		return "", ErrUnableToReachAuth0
+	}
 	if accessToken != "" {
 		fmt.Println("Access Token is present.")
 		return accessToken, nil
@@ -54,7 +60,7 @@ func FetchAccessToken() (string, error) {
 
 	res, _ := http.DefaultClient.Do(req)
 	fmt.Println("HTTP Response Status:", res.StatusCode, http.StatusText(res.StatusCode))
-	if res.StatusCode != 200 {
+	if res.StatusCode != 201 {
 		return "", errors.New("Unable to get access token")
 	}
 	defer res.Body.Close()
@@ -66,7 +72,11 @@ func FetchAccessToken() (string, error) {
 
 	if res.Body != nil {
 
+		//set the duration time to the expires in. The expires in integer from Auth0 is in seconds
 		err := rdb.Set(ctx, "auth0_access_token", atr.AccessToken, time.Duration(30)*time.Second).Err()
+		err = rdb.Set(ctx, "auth0_refresh_token", atr.RefreshToken, time.Duration(30)*time.Second).Err()
+		err = rdb.Set(ctx, "auth0_id_token", atr.IDToken, time.Duration(30)*time.Second).Err()
+		err = rdb.Set(ctx, "auth0_access_token_expires_in", atr.Expires, time.Duration(30)*time.Second).Err()
 		if err != nil {
 			return "", err
 		}
@@ -96,8 +106,8 @@ type createUserResp struct {
 
 func CreateUser(u authapi.User) (string, error) {
 	accessToken, err := FetchAccessToken()
-	if err != nil || accessToken == "" {
-		return "", err
+	if err != nil {
+		return "", ErrUnableToReachAuth0
 	}
 	a := appMetaData{}
 	userReq := createUserReq{
@@ -125,11 +135,57 @@ func CreateUser(u authapi.User) (string, error) {
 	res, _ := http.DefaultClient.Do(req)
 
 	defer res.Body.Close()
-
+	if res.StatusCode != 201 {
+		return "", errors.New("Unable to create user")
+	}
 	var cur createUserResp
 	json.NewDecoder(res.Body).Decode(&cur)
 
 	fmt.Println("cur.UserId", cur.UserId)
 	return cur.UserId, nil
+
+}
+
+type verEmailReq struct {
+	ExternalID string `json:"user_id"`
+	ClientID   string `json:"client_id"`
+}
+type verEmailResp struct {
+	Status  string `json:"status"`
+	Type    string `json:"type"`
+	Created string `json:"created_at"`
+	ID      string `json:"id"`
+}
+
+func SendVerificationEmail(u authapi.User) error {
+
+	accessToken, err := FetchAccessToken()
+	if err != nil {
+		return ErrUnableToReachAuth0
+	}
+	verEmailReq := verEmailReq{
+		ExternalID: u.ExternalID,
+		ClientID:   os.Getenv("AUTH0_CLIENT_ID"),
+	}
+
+	url := "https://" + os.Getenv("AUTH0_DOMAIN") + "/api/v2/jobs/verification-email"
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(verEmailReq)
+	req, _ := http.NewRequest("POST", url, b)
+
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	res, _ := http.DefaultClient.Do(req)
+
+	defer res.Body.Close()
+	if res.StatusCode != 201 {
+		return errors.New("Unable to send verification email")
+	}
+
+	var vResp verEmailResp
+	json.NewDecoder(res.Body).Decode(&vResp)
+
+	return nil
 
 }

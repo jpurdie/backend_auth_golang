@@ -4,10 +4,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/company"
+	AuthUtil "github.com/jpurdie/authapi/pkg/utl/Auth"
 	"github.com/jpurdie/authapi/pkg/utl/Auth0"
-	"net/http"
-
 	"github.com/labstack/echo"
+	"net/http"
 )
 
 // HTTP represents company http service
@@ -138,16 +138,17 @@ func NewHTTP(svc company.Service, r *echo.Group) {
 // Custom errors
 var (
 	ErrPasswordsNotMaching = echo.NewHTTPError(http.StatusBadRequest, "passwords do not match")
+	ErrPasswordNotValid    = echo.NewHTTPError(http.StatusBadRequest, "passwords are not in the valid format")
 )
 
 // User create request
 // swagger:model userCreate
 type createOrgUserReq struct {
-	CompanyName     string `json:"orgName" validate:"required"`
-	FirstName       string `json:"firstName" validate:"required"`
-	LastName        string `json:"lastName" validate:"required"`
-	Password        string `json:"password" validate:"required,min=8"`
-	PasswordConfirm string `json:"passwordConfirm" validate:"required"`
+	CompanyName     string `json:"orgName" validate:"required,min=4"`
+	FirstName       string `json:"firstName" validate:"required,min=2"`
+	LastName        string `json:"lastName" validate:"required,min=2"`
+	Password        string `json:"password" validate:"required`
+	PasswordConfirm string `json:"passwordConfirm" validate:"required,eqfield=Password"`
 	Email           string `json:"email" validate:"required,email"`
 }
 
@@ -160,6 +161,10 @@ func (h HTTP) create(c echo.Context) error {
 
 	if r.Password != r.PasswordConfirm {
 		return ErrPasswordsNotMaching
+	}
+
+	if !AuthUtil.VerifyPassword(r.Password) {
+		return ErrPasswordNotValid
 	}
 
 	company := authapi.Company{Name: r.CompanyName, Active: true}
@@ -176,9 +181,19 @@ func (h HTTP) create(c echo.Context) error {
 	cu := authapi.CompanyUser{Company: &company, User: &u, UUID: x}
 
 	externalID, err := Auth0.CreateUser(u)
+	if err != nil {
+		return err
+	}
+
 	u.ExternalID = externalID
 
 	companyUser, err := h.svc.Create(c, cu)
+	if err != nil {
+		//delete auth0 user
+		return err
+	}
+
+	err = Auth0.SendVerificationEmail(u)
 
 	if err != nil {
 		return err
