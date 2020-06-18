@@ -33,12 +33,17 @@ package api
 
 import (
 	"crypto/sha1"
+	"github.com/auth0/go-jwt-middleware"
+	"github.com/dgrijalva/jwt-go"
 	company "github.com/jpurdie/authapi/pkg/api/company"
 	companyLog "github.com/jpurdie/authapi/pkg/api/company/logging"
 	companyTransp "github.com/jpurdie/authapi/pkg/api/company/transport"
 	"github.com/jpurdie/authapi/pkg/api/ping"
 	pingl "github.com/jpurdie/authapi/pkg/api/ping/logging"
 	pingt "github.com/jpurdie/authapi/pkg/api/ping/transport"
+	user "github.com/jpurdie/authapi/pkg/api/user"
+	userLog "github.com/jpurdie/authapi/pkg/api/user/logging"
+	userTransp "github.com/jpurdie/authapi/pkg/api/user/transport"
 	"github.com/jpurdie/authapi/pkg/utl/config"
 	"github.com/jpurdie/authapi/pkg/utl/jwt"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
@@ -56,12 +61,6 @@ func Start(cfg *config.Configuration) error {
 	if err != nil {
 		return err
 	}
-	sec := secure.New(cfg.App.MinPasswordStr, sha1.New())
-	rbac := rbac.Service{}
-	jwt, err := jwt.New(cfg.JWT.SigningAlgorithm, os.Getenv("JWT_SECRET"), cfg.JWT.DurationMinutes, cfg.JWT.MinSecretLength)
-	if err != nil {
-		return err
-	}
 
 	log := zlog.New()
 
@@ -71,16 +70,12 @@ func Start(cfg *config.Configuration) error {
 
 	pingt.NewHTTP(pingl.New(ping.Initialize(), log), public)
 
-	authMiddleware := authMw.Middleware(jwt)
-
-	//at.NewHTTP(al.New(auth.Initialize(db, jwt, sec, rbac), log), e, authMiddleware)
-
 	v1 := e.Group("api/v1")
 
-	companyTransp.NewHTTP(companyLog.New(company.Initialize(db, rbac, sec), log), v1)
+	companyTransp.NewHTTP(companyLog.New(company.Initialize(db), log), v1)
 
 	v1.Use(authMiddleware)
-	//ut.NewHTTP(ul.New(user.Initialize(db, rbac, sec), log), v1)
+	userTransp.NewHTTP(userLog.New(user.Initialize(db, rbac, sec), log), v1)
 
 	//	pt.NewHTTP(pl.New(password.Initialize(db, rbac, sec), log), v1)
 

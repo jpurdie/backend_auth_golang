@@ -2,9 +2,9 @@ package company
 
 import (
 	"github.com/go-pg/pg/v9"
-	"github.com/labstack/echo"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/company/platform/pgsql"
+	"github.com/labstack/echo"
 )
 
 // Service represents user application interface
@@ -17,21 +17,19 @@ type Service interface {
 }
 
 // New creates new user application service
-func New(db *pg.DB, cdb CDB, rbac RBAC, sec Securer) *CompanyUser {
-	return &CompanyUser{db: db, cdb: cdb, rbac: rbac, sec: sec}
+func New(db *pg.DB, cdb CDB) *CompanyUser {
+	return &CompanyUser{db: db, cdb: cdb}
 }
 
 // Initialize initalizes Company application service with defaults
-func Initialize(db *pg.DB, rbac RBAC, sec Securer) *CompanyUser {
-	return New(db, pgsql.CompanyUser{}, rbac, sec)
+func Initialize(db *pg.DB) *CompanyUser {
+	return New(db, pgsql.CompanyUser{})
 }
 
 // User represents company application service
 type CompanyUser struct {
-	db   *pg.DB
-	cdb  CDB
-	rbac RBAC
-	sec  Securer
+	db  *pg.DB
+	cdb CDB
 }
 
 // Securer represents security interface

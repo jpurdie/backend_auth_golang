@@ -19,120 +19,15 @@ type HTTP struct {
 func NewHTTP(svc user.Service, r *echo.Group) {
 	h := HTTP{svc}
 	ur := r.Group("/users")
-	// swagger:route POST /v1/users users userCreate
-	// Creates new user account.
-	// responses:
-	//  200: userResp
-	//  400: errMsg
-	//  401: err
-	//  403: errMsg
-	//  500: err
 	ur.POST("", h.create)
-
-	// swagger:operation GET /v1/users users listUsers
-	// ---
-	// summary: Returns list of users.
-	// description: Returns list of users. Depending on the user role requesting it, it may return all users for SuperAdmin/Admin users, all company/location users for Company/Location admins, and an error for non-admin users.
-	// parameters:
-	// - name: limit
-	//   in: query
-	//   description: number of results
-	//   type: int
-	//   required: false
-	// - name: page
-	//   in: query
-	//   description: page number
-	//   type: int
-	//   required: false
-	// responses:
-	//   "200":
-	//     "$ref": "#/responses/userListResp"
-	//   "400":
-	//     "$ref": "#/responses/errMsg"
-	//   "401":
-	//     "$ref": "#/responses/err"
-	//   "403":
-	//     "$ref": "#/responses/err"
-	//   "500":
-	//     "$ref": "#/responses/err"
 	ur.GET("", h.list)
-
-	// swagger:operation GET /v1/users/{id} users getUser
-	// ---
-	// summary: Returns a single user.
-	// description: Returns a single user by its ID.
-	// parameters:
-	// - name: id
-	//   in: path
-	//   description: id of user
-	//   type: int
-	//   required: true
-	// responses:
-	//   "200":
-	//     "$ref": "#/responses/userResp"
-	//   "400":
-	//     "$ref": "#/responses/err"
-	//   "401":
-	//     "$ref": "#/responses/err"
-	//   "403":
-	//     "$ref": "#/responses/err"
-	//   "404":
-	//     "$ref": "#/responses/err"
-	//   "500":
-	//     "$ref": "#/responses/err"
 	ur.GET("/:id", h.view)
-
-	// swagger:operation PATCH /v1/users/{id} users userUpdate
-	// ---
-	// summary: Updates user's contact information
-	// description: Updates user's contact information -> first name, last name, mobile, phone, address.
-	// parameters:
-	// - name: id
-	//   in: path
-	//   description: id of user
-	//   type: int
-	//   required: true
-	// - name: request
-	//   in: body
-	//   description: Request body
-	//   required: true
-	//   schema:
-	//     "$ref": "#/definitions/userUpdate"
-	// responses:
-	//   "200":
-	//     "$ref": "#/responses/userResp"
-	//   "400":
-	//     "$ref": "#/responses/errMsg"
-	//   "401":
-	//     "$ref": "#/responses/err"
-	//   "403":
-	//     "$ref": "#/responses/err"
-	//   "500":
-	//     "$ref": "#/responses/err"
 	ur.PATCH("/:id", h.update)
-
-	// swagger:operation DELETE /v1/users/{id} users userDelete
-	// ---
-	// summary: Deletes a user
-	// description: Deletes a user with requested ID.
-	// parameters:
-	// - name: id
-	//   in: path
-	//   description: id of user
-	//   type: int
-	//   required: true
-	// responses:
-	//   "200":
-	//     "$ref": "#/responses/ok"
-	//   "400":
-	//     "$ref": "#/responses/err"
-	//   "401":
-	//     "$ref": "#/responses/err"
-	//   "403":
-	//     "$ref": "#/responses/err"
-	//   "500":
-	//     "$ref": "#/responses/err"
 	ur.DELETE("/:id", h.delete)
+
+	uc := ur.Group("/companies")
+	uc.GET("/", h.listCompanies)
+
 }
 
 // Custom errors
@@ -150,11 +45,14 @@ type createReq struct {
 	PasswordConfirm string `json:"password_confirm" validate:"required"`
 	Email           string `json:"email" validate:"required,email"`
 
-	CompanyID  int              `json:"company_id" validate:"required"`
-	LocationID int              `json:"location_id" validate:"required"`
+	CompanyID  int                `json:"company_id" validate:"required"`
+	LocationID int                `json:"location_id" validate:"required"`
 	RoleID     authapi.AccessRole `json:"role_id" validate:"required"`
 }
 
+func (h HTTP) listCompanies(c echo.Context) error {
+	return c.JSON(http.StatusOK, "list orgs")
+}
 func (h HTTP) create(c echo.Context) error {
 	r := new(createReq)
 
@@ -191,7 +89,7 @@ func (h HTTP) create(c echo.Context) error {
 
 type listResponse struct {
 	Users []authapi.User `json:"users"`
-	Page  int          `json:"page"`
+	Page  int            `json:"page"`
 }
 
 func (h HTTP) list(c echo.Context) error {

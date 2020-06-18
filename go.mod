@@ -3,6 +3,7 @@ module github.com/jpurdie/authapi
 go 1.14
 
 require (
+	github.com/auth0/go-jwt-middleware v0.0.0-20200507191422-d30d7b9ece63 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fortytw2/dockertest v0.0.0-20181228171220-480d52efdffe

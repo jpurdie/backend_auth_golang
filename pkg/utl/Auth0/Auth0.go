@@ -20,11 +20,17 @@ var (
 )
 
 func buildRedisClient() *redis.Client {
-	return redis.NewClient(&redis.Options{
+	rdb := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT"),
 		Password: os.Getenv("REDIS_PW"),
 		DB:       0, // use default DB
 	})
+	pong, err := rdb.Ping(ctx).Result()
+	fmt.Println(pong, err)
+	if err != nil {
+		panic(err)
+	}
+	return rdb
 }
 
 type accessTokenResp struct {
@@ -37,10 +43,8 @@ type accessTokenResp struct {
 
 func FetchAccessToken() (string, error) {
 	rdb := buildRedisClient()
-	accessToken, err := rdb.Get(ctx, "auth0_access_token").Result()
-	if err != nil {
-		return "", ErrUnableToReachAuth0
-	}
+	accessToken, _ := rdb.Get(ctx, "auth0_access_token").Result()
+
 	if accessToken != "" {
 		fmt.Println("Access Token is present.")
 		return accessToken, nil
@@ -60,7 +64,7 @@ func FetchAccessToken() (string, error) {
 
 	res, _ := http.DefaultClient.Do(req)
 	fmt.Println("HTTP Response Status:", res.StatusCode, http.StatusText(res.StatusCode))
-	if res.StatusCode != 201 {
+	if res.StatusCode != 201 && res.StatusCode != 200 {
 		return "", errors.New("Unable to get access token")
 	}
 	defer res.Body.Close()
