@@ -4,3 +4,6 @@ cmd/api/config/files/config.dev.yaml
 .idea/
 .DS_Store
 .env
+.env.example
+.env.local
+.env.staging
