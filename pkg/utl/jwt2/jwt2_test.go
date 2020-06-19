@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jpurdie/authapi"
-	"github.com/jpurdie/authapi/pkg/utl/jwt"
+	"github.com/jpurdie/authapi/pkg/utl/jwt2"
 
 	"github.com/stretchr/testify/assert"
 )

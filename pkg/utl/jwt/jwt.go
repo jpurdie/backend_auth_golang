@@ -1,7 +1,12 @@
 package jwt
 
 import (
-	"fmt"
+	"encoding/json"
+	"errors"
+	jwtmiddleware "github.com/auth0/go-jwt-middleware"
+
+	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -11,26 +16,6 @@ import (
 )
 
 var minSecretLen = 128
-
-// New generates new JWT service necessary for auth middleware
-func New(algo, secret string, ttlMinutes, minSecretLength int) (Service, error) {
-	if minSecretLength > 0 {
-		minSecretLen = minSecretLength
-	}
-	if len(secret) < minSecretLen {
-		return Service{}, fmt.Errorf("jwt secret length is %v, which is less than required %v", len(secret), minSecretLen)
-	}
-	signingMethod := jwt.GetSigningMethod(algo)
-	if signingMethod == nil {
-		return Service{}, fmt.Errorf("invalid jwt signing method: %s", algo)
-	}
-
-	return Service{
-		key:  []byte(secret),
-		algo: signingMethod,
-		ttl:  time.Duration(ttlMinutes) * time.Minute,
-	}, nil
-}
 
 // Service provides a Json-Web-Token authentication implementation
 type Service struct {
@@ -71,4 +56,128 @@ func (s Service) GenerateToken(u authapi.User) (string, error) {
 		"exp": time.Now().Add(s.ttl).Unix(),
 	}).SignedString(s.key)
 
+}
+
+type Response struct {
+	Message string `json:"message"`
+}
+
+type Jwks struct {
+	Keys []JSONWebKeys `json:"keys"`
+}
+
+type JSONWebKeys struct {
+	Kty string   `json:"kty"`
+	Kid string   `json:"kid"`
+	Use string   `json:"use"`
+	N   string   `json:"n"`
+	E   string   `json:"e"`
+	X5c []string `json:"x5c"`
+}
+
+func New() *jwtmiddleware.JWTMiddleware {
+
+	myFunc := func(token *jwt.Token) (interface{}, error) {
+		// Verify 'aud' claim
+		aud := os.Getenv("AUTH0_AUDIENCE")
+		checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
+		if !checkAud {
+			return token, errors.New("Invalid audience.")
+		}
+		// Verify 'iss' claim
+		iss := "https://" + os.Getenv("AUTH0_DOMAIN") + "/"
+		checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
+		if !checkIss {
+			return token, errors.New("Invalid issuer.")
+		}
+
+		cert, err := getPemCert(token)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+		return result, nil
+	}
+	options := jwtmiddleware.Options{
+		ValidationKeyGetter: myFunc,
+		SigningMethod:       jwt.SigningMethodRS256,
+	}
+
+	return jwtmiddleware.New(options)
+
+}
+
+type CustomClaims struct {
+	Scope string `json:"scope"`
+	jwt.StandardClaims
+}
+
+func checkScope(scope string, tokenString string) bool {
+	token, _ := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		cert, err := getPemCert(token)
+		if err != nil {
+			return nil, err
+		}
+		result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+		return result, nil
+	})
+
+	claims, ok := token.Claims.(*CustomClaims)
+
+	hasScope := false
+	if ok && token.Valid {
+		result := strings.Split(claims.Scope, " ")
+		for i := range result {
+			if result[i] == scope {
+				hasScope = true
+			}
+		}
+	}
+
+	return hasScope
+}
+
+func getPemCert(token *jwt.Token) (string, error) {
+	cert := ""
+	resp, err := http.Get("https://" + os.Getenv("AUTH0_DOMAIN") + "/.well-known/jwks.json")
+
+	if err != nil {
+		return cert, err
+	}
+	defer resp.Body.Close()
+
+	var jwks = Jwks{}
+	err = json.NewDecoder(resp.Body).Decode(&jwks)
+
+	if err != nil {
+		return cert, err
+	}
+
+	for k, _ := range jwks.Keys {
+		if token.Header["kid"] == jwks.Keys[k].Kid {
+			cert = "-----BEGIN CERTIFICATE-----\n" + jwks.Keys[k].X5c[0] + "\n-----END CERTIFICATE-----"
+		}
+	}
+
+	if cert == "" {
+		err := errors.New("Unable to find appropriate key.")
+		return cert, err
+	}
+
+	return cert, nil
+}
+
+func responseJSON(message string, w http.ResponseWriter, statusCode int) {
+	response := Response{message}
+
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	w.Write(jsonResponse)
 }

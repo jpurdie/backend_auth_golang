@@ -1,12 +1,11 @@
 package auth
 
 import (
-	"net/http"
+	jwtUtil "github.com/jpurdie/authapi/pkg/utl/jwt"
+	//"net/http"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
-
-	"github.com/jpurdie/authapi"
 )
 
 // TokenParser represents JWT token parser
@@ -15,29 +14,39 @@ type TokenParser interface {
 }
 
 // Middleware makes JWT implement the Middleware interface.
-func Middleware(tokenParser TokenParser) echo.MiddlewareFunc {
+//func Middleware(tokenParser TokenParser) echo.MiddlewareFunc {
+func Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			token, err := tokenParser.ParseToken(c.Request().Header.Get("Authorization"))
-			if err != nil || !token.Valid {
-				return c.NoContent(http.StatusUnauthorized)
+
+			handler := jwtUtil.New()
+			err := handler.CheckJWT(c.Response(), c.Request())
+			if err != nil {
+				panic(err.Error())
 			}
 
-			claims := token.Claims.(jwt.MapClaims)
+			//authHeaderVal := c.Request().Header.Get("Authorization")
 
-			id := int(claims["id"].(float64))
-			companyID := int(claims["c"].(float64))
-			locationID := int(claims["l"].(float64))
-			username := claims["u"].(string)
-			email := claims["e"].(string)
-			role := authapi.AccessRole(claims["r"].(float64))
-
-			c.Set("id", id)
-			c.Set("company_id", companyID)
-			c.Set("location_id", locationID)
-			c.Set("username", username)
-			c.Set("email", email)
-			c.Set("role", role)
+			//token, err := tokenParser.ParseToken(authHeaderVal)
+			//if err != nil || !token.Valid {
+			//	return c.NoContent(http.StatusUnauthorized)
+			//}
+			//
+			//claims := token.Claims.(jwt.MapClaims)
+			//
+			//id := int(claims["id"].(float64))
+			//companyID := int(claims["c"].(float64))
+			//locationID := int(claims["l"].(float64))
+			//username := claims["u"].(string)
+			//email := claims["e"].(string)
+			//role := authapi.AccessRole(claims["r"].(float64))
+			//
+			//c.Set("id", id)
+			//c.Set("company_id", companyID)
+			//c.Set("location_id", locationID)
+			//c.Set("username", username)
+			//c.Set("email", email)
+			//c.Set("role", role)
 
 			return next(c)
 		}

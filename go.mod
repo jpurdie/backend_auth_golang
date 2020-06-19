@@ -3,7 +3,8 @@ module github.com/jpurdie/authapi
 go 1.14
 
 require (
-	github.com/auth0/go-jwt-middleware v0.0.0-20200507191422-d30d7b9ece63 // indirect
+	github.com/auth0/go-jwt-middleware v0.0.0-20200507191422-d30d7b9ece63
+	github.com/codegangsta/negroni v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fortytw2/dockertest v0.0.0-20181228171220-480d52efdffe
@@ -24,6 +25,7 @@ require (
 	github.com/onsi/ginkgo v1.12.0 // indirect
 	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rs/cors v1.7.0 // indirect
 	github.com/rs/zerolog v1.18.0
 	github.com/segmentio/encoding v0.1.10
 	github.com/stretchr/testify v1.4.0
