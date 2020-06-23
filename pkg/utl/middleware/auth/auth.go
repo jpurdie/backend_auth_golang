@@ -3,7 +3,6 @@ package auth
 import (
 	jwtUtil "github.com/jpurdie/authapi/pkg/utl/jwt"
 	//"net/http"
-
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
 )
@@ -11,6 +10,8 @@ import (
 // TokenParser represents JWT token parser
 type TokenParser interface {
 	ParseToken(string) (*jwt.Token, error)
+}
+type userInterface interface {
 }
 
 // Middleware makes JWT implement the Middleware interface.
@@ -25,29 +26,23 @@ func Middleware() echo.MiddlewareFunc {
 				panic(err.Error())
 			}
 
-			//authHeaderVal := c.Request().Header.Get("Authorization")
+			userContext := c.Request().Context().Value("user").(*jwt.Token)
+			claims := userContext.Claims.(jwt.MapClaims)
+			sub := claims["sub"].(string)
+			iss := claims["iss"].(string)
+			//	aud := claims["aud"].(string)
+			iat := int(claims["iat"].(float64))
+			exp := int(claims["exp"].(float64))
+			azp := claims["azp"].(string)
+			scope := claims["scope"].(string)
 
-			//token, err := tokenParser.ParseToken(authHeaderVal)
-			//if err != nil || !token.Valid {
-			//	return c.NoContent(http.StatusUnauthorized)
-			//}
-			//
-			//claims := token.Claims.(jwt.MapClaims)
-			//
-			//id := int(claims["id"].(float64))
-			//companyID := int(claims["c"].(float64))
-			//locationID := int(claims["l"].(float64))
-			//username := claims["u"].(string)
-			//email := claims["e"].(string)
-			//role := authapi.AccessRole(claims["r"].(float64))
-			//
-			//c.Set("id", id)
-			//c.Set("company_id", companyID)
-			//c.Set("location_id", locationID)
-			//c.Set("username", username)
-			//c.Set("email", email)
-			//c.Set("role", role)
-
+			c.Set("sub", sub)
+			c.Set("iss", iss)
+			//	c.Set("aud", aud)
+			c.Set("iat", iat)
+			c.Set("exp", exp)
+			c.Set("azp", azp)
+			c.Set("scope", scope)
 			return next(c)
 		}
 	}

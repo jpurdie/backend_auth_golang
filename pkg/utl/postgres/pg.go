@@ -1,32 +1,29 @@
 package postgres
 
 import (
-	"context"
-	"fmt"
+	"log"
 	"os"
 	"time"
 
-	"github.com/go-pg/pg/v9"
+	"github.com/go-pg/pg"
 	// DB adapter
 	_ "github.com/lib/pq"
 )
 
-type dbLogger struct{}
+type logSQL struct{}
 
-// BeforeQuery hooks before pg queries
-func (d dbLogger) BeforeQuery(c context.Context, q *pg.QueryEvent) (context.Context, error) {
-	return c, nil
-}
+func (l *logSQL) BeforeQuery(e *pg.QueryEvent) {}
 
-// AfterQuery hooks after pg queries
-func (d dbLogger) AfterQuery(c context.Context, q *pg.QueryEvent) error {
-	query, err := q.FormattedQuery()
-	fmt.Println(query)
-	return err
+func (l *logSQL) AfterQuery(e *pg.QueryEvent) {
+	query, err := e.FormattedQuery()
+	if err != nil {
+		panic(err)
+	}
+	log.Println(query)
 }
 
 // New creates new database connection to a postgres database
-func Init() (*pg.DB, error) {
+func DBConn() (*pg.DB, error) {
 
 	opt, err := pg.ParseURL(os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -35,10 +32,17 @@ func Init() (*pg.DB, error) {
 
 	db := pg.Connect(opt)
 	db = db.WithTimeout(time.Second * time.Duration(5))
-
+	if err := checkConn(db); err != nil {
+		return nil, err
+	}
 	if true {
-		db.AddQueryHook(dbLogger{})
+		db.AddQueryHook(&logSQL{})
 	}
 
 	return db, err
+}
+func checkConn(db *pg.DB) error {
+	var n int
+	_, err := db.QueryOne(pg.Scan(&n), "SELECT 1")
+	return err
 }

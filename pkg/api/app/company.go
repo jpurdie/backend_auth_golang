@@ -1,29 +1,40 @@
-package transport
+package app
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
-	"github.com/jpurdie/authapi/pkg/api/company"
 	AuthUtil "github.com/jpurdie/authapi/pkg/utl/Auth"
 	"github.com/jpurdie/authapi/pkg/utl/Auth0"
 	"github.com/labstack/echo"
 	"net/http"
 )
 
-// HTTP represents company http service
-type HTTP struct {
-	svc company.Service
+// CompanyStore defines database operations for Company.
+type CompanyStore interface {
+	Create(authapi.CompanyUser) (authapi.CompanyUser, error)
+	//List() error
 }
 
-// NewHTTP creates new company http service
-func NewHTTP(svc company.Service, r *echo.Group) {
-	h := HTTP{svc}
-	ur := r.Group("/companies")
-	ur.POST("", h.create)
+// Company Resource implements account management handler.
+type CompanyResource struct {
+	Store CompanyStore
 }
 
-// Custom errors
+func NewCompanyResource(store CompanyStore) *CompanyResource {
+	return &CompanyResource{
+		Store: store,
+	}
+}
+func (rs *CompanyResource) router(r *echo.Group) {
+	r.POST("", rs.create)
+	r.GET("/ping", rs.ping)
+
+}
+
 var (
+	ErrCompAlreadyExists   = echo.NewHTTPError(http.StatusConflict, "Company name already exists.")
+	ErrEmailAlreadyExists  = echo.NewHTTPError(http.StatusConflict, "Email already exists.")
 	ErrPasswordsNotMaching = echo.NewHTTPError(http.StatusBadRequest, "passwords do not match")
 	ErrPasswordNotValid    = echo.NewHTTPError(http.StatusBadRequest, "passwords are not in the valid format")
 )
@@ -37,7 +48,7 @@ type createOrgUserReq struct {
 	Email           string `json:"email" validate:"required,email"`
 }
 
-func (h HTTP) create(c echo.Context) error {
+func (rs *CompanyResource) create(c echo.Context) error {
 	r := new(createOrgUserReq)
 
 	if err := c.Bind(r); err != nil {
@@ -72,9 +83,10 @@ func (h HTTP) create(c echo.Context) error {
 
 	u.ExternalID = externalID
 
-	companyUser, err := h.svc.Create(c, cu)
+	companyUser, err := rs.Store.Create(cu)
 	if err != nil {
-		//delete auth0 user
+		fmt.Println(err)
+		err = Auth0.DeleteUser(u) //need to delete user from auth0 since the database failed
 		return err
 	}
 
@@ -84,5 +96,10 @@ func (h HTTP) create(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, companyUser)
+	return c.JSON(http.StatusCreated, companyUser)
+
+}
+
+func (rs *CompanyResource) ping(c echo.Context) error {
+	return c.String(http.StatusOK, "pong")
 }

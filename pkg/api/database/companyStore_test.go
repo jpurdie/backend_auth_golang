@@ -1,4 +1,4 @@
-package pgsql_test
+package database_test
 
 import (
 	"fmt"

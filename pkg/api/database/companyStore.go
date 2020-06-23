@@ -1,42 +1,38 @@
-package pgsql
+package database
 
 import (
-	"fmt"
-	"github.com/go-pg/pg/v9"
-	"github.com/labstack/echo"
-	"github.com/jpurdie/authapi/pkg/utl/postgres"
-	"net/http"
-	"strings"
-
+	"errors"
+	"github.com/go-pg/pg"
 	"github.com/jpurdie/authapi"
+	"strings"
 )
 
 // User represents the client for company_user table
-type CompanyUser struct{}
 
+type CompanyStore struct {
+	db *pg.DB
+}
+
+// NewAdmAccountStore returns an AccountStore.
+func NewCompanyStore(db *pg.DB) *CompanyStore {
+	return &CompanyStore{
+		db: db,
+	}
+}
+
+//
 // Custom errors
 var (
-	ErrCompAlreadyExists  = echo.NewHTTPError(http.StatusConflict, "Company name already exists.")
-	ErrEmailAlreadyExists = echo.NewHTTPError(http.StatusConflict, "Email already exists.")
+	ErrCompAlreadyExists  = errors.New("Company name already exists")
+	ErrEmailAlreadyExists = errors.New("Email already exists")
 )
 
 // Create creates a new user on database
-func (c CompanyUser) Create(db *pg.DB, cu authapi.CompanyUser) (authapi.CompanyUser, error) {
-
-	var n string
-	tempDb, _ := postgres.Init()
-	_, err := tempDb.QueryOne(pg.Scan(&n), "SELECT now() ")
-	tempDb.Close()
-
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Connected to database at: " + n)
+func (s *CompanyStore) Create(cu authapi.CompanyUser) (authapi.CompanyUser, error) {
 
 	var company = new(authapi.Company)
-	tempDb, _ = postgres.Init()
-	count, err := tempDb.Model(company).Where("lower(name) = ? and deleted_at is null", strings.ToLower(cu.Company.Name)).Count()
-	tempDb.Close()
+
+	count, err := s.db.Model(company).Where("lower(name) = ? and deleted_at is null", strings.ToLower(cu.Company.Name)).Count()
 	if err != nil {
 		return authapi.CompanyUser{}, err
 	}
@@ -45,9 +41,7 @@ func (c CompanyUser) Create(db *pg.DB, cu authapi.CompanyUser) (authapi.CompanyU
 	}
 	var user = new(authapi.User)
 
-	tempDb, _ = postgres.Init()
-	count, err = tempDb.Model(user).Where("lower(email) = ? and deleted_at is null", strings.ToLower(cu.User.Email)).Count()
-	tempDb.Close()
+	count, err = s.db.Model(user).Where("lower(email) = ? and deleted_at is null", strings.ToLower(cu.User.Email)).Count()
 
 	if err != nil {
 		return authapi.CompanyUser{}, err
@@ -56,9 +50,7 @@ func (c CompanyUser) Create(db *pg.DB, cu authapi.CompanyUser) (authapi.CompanyU
 		return authapi.CompanyUser{}, ErrEmailAlreadyExists
 	}
 
-	print(db.PoolStats().TotalConns)
-	tempDb, _ = postgres.Init()
-	tx, err := tempDb.Begin()
+	tx, err := s.db.Begin()
 	tx.Model(cu.Company).Insert()
 	cu.User.CompanyID = cu.Company.ID
 	tx.Model(cu.User).Insert()
@@ -69,10 +61,19 @@ func (c CompanyUser) Create(db *pg.DB, cu authapi.CompanyUser) (authapi.CompanyU
 	if trErr != nil {
 		tx.Rollback()
 	}
-	tempDb.Close()
 	return cu, err
 }
 
+//func (env *Env) List() ([]authapi.Company, error) {
+//	var companies []authapi.Company
+//	tempDb, _ := postgres.Init()
+//	defer tempDb.Close()
+//
+//	_, err := tempDb.QueryOne(pg.Scan(&n), "SELECT now() ")
+//	return companies, err
+//}
+
+//
 //// View returns single user by ID
 //func (co Company) View(db orm.DB, id int) (authapi.Company, error) {
 //	var company authapi.Company
@@ -90,15 +91,6 @@ func (c CompanyUser) Create(db *pg.DB, cu authapi.CompanyUser) (authapi.CompanyU
 //}
 //
 //// List returns list of all users retrievable for the current user, depending on role
-//func (co Company) List(db orm.DB, qp *authapi.ListQuery, p authapi.Pagination) ([]authapi.Company, error) {
-//	var companies []authapi.Company
-//	q := db.Model(&companies).Relation("Role").Limit(p.Limit).Offset(p.Offset).Where("deleted_at is null").Order("user.id desc")
-//	if qp != nil {
-//		q.Where(qp.Query, qp.ID)
-//	}
-//	err := q.Select()
-//	return companies, err
-//}
 //
 //// Delete sets deleted_at for a user
 //func (co Company) Delete(db orm.DB, company authapi.Company) error {

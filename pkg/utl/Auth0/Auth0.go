@@ -5,8 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"github.com/jpurdie/authapi"
+	"github.com/jpurdie/authapi/pkg/utl/redis"
 	"github.com/segmentio/encoding/json"
 	"net/http"
 	"os"
@@ -15,23 +15,10 @@ import (
 )
 
 var ctx = context.Background()
+
 var (
 	ErrUnableToReachAuth0 = errors.New("Unable to reach authentication service")
 )
-
-func buildRedisClient() *redis.Client {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT"),
-		Password: os.Getenv("REDIS_PW"),
-		DB:       0, // use default DB
-	})
-	pong, err := rdb.Ping(ctx).Result()
-	fmt.Println(pong, err)
-	if err != nil {
-		panic(err)
-	}
-	return rdb
-}
 
 type accessTokenResp struct {
 	AccessToken  string `json:"access_token"`
@@ -42,7 +29,7 @@ type accessTokenResp struct {
 }
 
 func FetchAccessToken() (string, error) {
-	rdb := buildRedisClient()
+	rdb := redis.BuildRedisClient()
 	accessToken, _ := rdb.Get(ctx, "auth0_access_token").Result()
 
 	if accessToken != "" {
@@ -185,6 +172,33 @@ func SendVerificationEmail(u authapi.User) error {
 	defer res.Body.Close()
 	if res.StatusCode != 201 {
 		return errors.New("Unable to send verification email")
+	}
+
+	var vResp verEmailResp
+	json.NewDecoder(res.Body).Decode(&vResp)
+
+	return nil
+
+}
+
+func DeleteUser(u authapi.User) error {
+
+	accessToken, err := FetchAccessToken()
+	if err != nil {
+		return ErrUnableToReachAuth0
+	}
+	url := "https://" + os.Getenv("AUTH0_DOMAIN") + "/api/v2/users/" + u.ExternalID
+	b := new(bytes.Buffer)
+	req, _ := http.NewRequest("DELETE", url, b)
+
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	res, _ := http.DefaultClient.Do(req)
+
+	defer res.Body.Close()
+	if res.StatusCode != 204 {
+		return errors.New("Unable to delete user from auth0 " + u.ExternalID)
 	}
 
 	var vResp verEmailResp

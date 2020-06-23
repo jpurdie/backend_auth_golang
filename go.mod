@@ -7,7 +7,9 @@ require (
 	github.com/codegangsta/negroni v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/dhax/go-base v0.0.0-20200416115821-21175bda6272
 	github.com/fortytw2/dockertest v0.0.0-20181228171220-480d52efdffe
+	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-pg/pg v8.0.6+incompatible
 	github.com/go-pg/pg/v9 v9.1.5
 	github.com/go-playground/universal-translator v0.17.0 // indirect
@@ -28,6 +30,7 @@ require (
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/rs/zerolog v1.18.0
 	github.com/segmentio/encoding v0.1.10
+	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.4.0
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.1.0 // indirect

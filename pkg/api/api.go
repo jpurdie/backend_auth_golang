@@ -32,53 +32,36 @@
 package api
 
 import (
-	company "github.com/jpurdie/authapi/pkg/api/company"
-	companyLog "github.com/jpurdie/authapi/pkg/api/company/logging"
-	companyTransp "github.com/jpurdie/authapi/pkg/api/company/transport"
-	"github.com/jpurdie/authapi/pkg/api/ping"
-	pingl "github.com/jpurdie/authapi/pkg/api/ping/logging"
-	pingt "github.com/jpurdie/authapi/pkg/api/ping/transport"
-	user "github.com/jpurdie/authapi/pkg/api/user"
-	userLog "github.com/jpurdie/authapi/pkg/api/user/logging"
-	userTransp "github.com/jpurdie/authapi/pkg/api/user/transport"
+	"github.com/jpurdie/authapi/pkg/api/app"
+	"github.com/jpurdie/authapi/pkg/api/public"
 	"github.com/jpurdie/authapi/pkg/utl/config"
-	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
 	"github.com/jpurdie/authapi/pkg/utl/postgres"
 	"github.com/jpurdie/authapi/pkg/utl/server"
-	"github.com/jpurdie/authapi/pkg/utl/zlog"
-	"github.com/labstack/echo"
-	"net/http"
+	"github.com/labstack/echo/middleware"
 )
 
 // Start starts the API service
 func Start(cfg *config.Configuration) error {
-	db, err := postgres.Init()
-	if err != nil {
-		return err
-	}
 
-	log := zlog.New()
+	db, _ := postgres.DBConn()
 
 	e := server.New()
+	e.Pre(middleware.RemoveTrailingSlash())
+
 	e.Static("/swaggerui", cfg.App.SwaggerUIPath)
-	public := e.Group("public")
 
-	pingt.NewHTTP(pingl.New(ping.Initialize(), log), public)
+	publicAPI, err := public.NewAPI(db)
 
-	v1 := e.Group("api/v1")
+	appAPI, err := app.NewAPI(db)
+	if err != nil {
+		panic(err)
+	}
 
-	companyTransp.NewHTTP(companyLog.New(company.Initialize(db), log), v1)
-
-	//setting up middleware for authentication
-	authMiddleware := authMw.Middleware()
-	v1.Use(authMiddleware)
-
-	//test ping pong - behind authentication
-	v1.GET("/ping", func(c echo.Context) error {
-		return c.String(http.StatusOK, "pong")
-	})
-
-	userTransp.NewHTTP(userLog.New(user.Initialize(db), log), v1)
+	public := e.Group("/public")
+	publicAPI.Router(public)
+	api := e.Group("/api")
+	v1 := api.Group("/v1")
+	appAPI.Router(v1)
 
 	server.Start(e, &server.Config{
 		Port:                cfg.Server.Port,
