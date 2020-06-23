@@ -8,6 +8,8 @@ import (
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/utl/redis"
 	"github.com/segmentio/encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -115,24 +117,44 @@ func CreateUser(u authapi.User) (string, error) {
 		VerifyEmail:   false,
 	}
 
+	timeout := time.Duration(5 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+
 	url := "https://" + os.Getenv("AUTH0_DOMAIN") + "/api/v2/users"
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(userReq)
-	req, _ := http.NewRequest("POST", url, b)
 
+	req, err := http.NewRequest("POST", url, b)
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("Authorization", "Bearer "+accessToken)
 
-	res, _ := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer res.Body.Close()
+
 	if res.StatusCode != 201 {
-		return "", errors.New("Unable to create user")
+		log.Println("Unable to create user in Auth0")
+		body, err := ioutil.ReadAll(res.Body)
+		fmt.Println(res)
+		fmt.Println(body)
+		fmt.Println(err)
+		return "", errors.New("Unable to create user in Auth0")
 	}
 	var cur createUserResp
-	json.NewDecoder(res.Body).Decode(&cur)
-
-	fmt.Println("cur.UserId", cur.UserId)
+	err = json.NewDecoder(res.Body).Decode(&cur)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("cur.UserId", cur.UserId)
 	return cur.UserId, nil
 
 }

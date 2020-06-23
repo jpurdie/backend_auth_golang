@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/joho/godotenv"
+	"log"
 
 	"github.com/jpurdie/authapi/pkg/api"
 
@@ -10,6 +11,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	cfgPath := flag.String("p", "./cmd/api/conf.local.yaml", "Path to config file")
 	flag.Parse()

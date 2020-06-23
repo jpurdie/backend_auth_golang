@@ -5,6 +5,7 @@ import (
 	"github.com/jpurdie/authapi/pkg/api/database"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
 	"github.com/labstack/echo"
+	"log"
 	"net/http"
 )
 
@@ -21,6 +22,7 @@ type API struct {
 
 // NewAPI configures and returns admin application API.
 func NewAPI(db *pg.DB) (*API, error) {
+	log.Println("Inside NewAPI")
 
 	companyStore := database.NewCompanyStore(db)
 	company := NewCompanyResource(companyStore)
@@ -31,6 +33,7 @@ func NewAPI(db *pg.DB) (*API, error) {
 	return api, nil
 }
 func (a *API) Router(r *echo.Group) {
+	log.Println("Inside API Router")
 
 	companies := r.Group("/companies")
 	a.Companies.router(companies)

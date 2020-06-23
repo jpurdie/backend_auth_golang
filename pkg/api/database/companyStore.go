@@ -2,9 +2,9 @@ package database
 
 import (
 	"errors"
-	"fmt"
 	"github.com/go-pg/pg"
 	"github.com/jpurdie/authapi"
+	"log"
 	"strings"
 )
 
@@ -29,50 +29,50 @@ var (
 )
 
 // Create creates a new user on database
-func (s *CompanyStore) Create(cu authapi.CompanyUser) (authapi.CompanyUser, error) {
+func (s *CompanyStore) Create(cu authapi.CompanyUser) error {
 
 	var company = new(authapi.Company)
 
 	count, err := s.db.Model(company).Where("lower(name) = ? and deleted_at is null", strings.ToLower(cu.Company.Name)).Count()
 	if err != nil {
-		return authapi.CompanyUser{}, err
+		return err
 	}
 	if count > 0 {
-		return authapi.CompanyUser{}, ErrCompAlreadyExists
+		return ErrCompAlreadyExists
 	}
 	var user = new(authapi.User)
 
 	count, err = s.db.Model(user).Where("lower(email) = ? and deleted_at is null", strings.ToLower(cu.User.Email)).Count()
 
 	if err != nil {
-		return authapi.CompanyUser{}, err
+		return err
 	}
 	if count > 0 {
-		return authapi.CompanyUser{}, ErrEmailAlreadyExists
+		return ErrEmailAlreadyExists
 	}
 
 	tx, err := s.db.Begin()
 	trErr := tx.Insert(cu.Company)
 	if trErr != nil {
-		fmt.Println(trErr)
+		log.Println(trErr)
 	}
 	cu.User.CompanyID = cu.Company.ID
 	trErr = tx.Insert(cu.User)
 	if trErr != nil {
-		fmt.Println(trErr)
+		log.Println(trErr)
 	}
 	cu.UserID = cu.User.ID
 	cu.CompanyID = cu.Company.ID
 	trErr = tx.Insert(&cu)
 	if trErr != nil {
-		fmt.Println(trErr)
+		log.Println(trErr)
 	}
 	trErr = tx.Commit()
 	if trErr != nil {
-		fmt.Println(trErr)
+		log.Println(trErr)
 		tx.Rollback()
 	}
-	return cu, err
+	return err
 }
 
 //func (env *Env) List() ([]authapi.Company, error) {
