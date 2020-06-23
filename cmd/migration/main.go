@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"strings"
@@ -11,12 +12,18 @@ import (
 )
 
 func main() {
+
+	err := godotenv.Load()
+	if err != nil {
+		panic("Error loading .env file")
+	}
+
 	dbInsert := `INSERT INTO public.companies VALUES (1, now(), now(), NULL, 'admin_company', true);
-	INSERT INTO public.roles VALUES (100, 100, 'SUPER_ADMIN');
-	INSERT INTO public.roles VALUES (110, 110, 'ADMIN');
-	INSERT INTO public.roles VALUES (120, 120, 'COMPANY_ADMIN');
-	INSERT INTO public.roles VALUES (130, 130, 'LOCATION_ADMIN');
-	INSERT INTO public.roles VALUES (200, 200, 'USER');`
+	INSERT INTO public.roles VALUES (500, 500, 'OWNER');
+	INSERT INTO public.roles VALUES (400, 400, 'SUPERUSER');
+	INSERT INTO public.roles VALUES (300, 300, 'ADMIN');
+	INSERT INTO public.roles VALUES (200, 200, 'SUPERVISOR');
+	INSERT INTO public.roles VALUES (100, 100, 'USER');`
 	var psn = os.Getenv("DATABASE_URL")
 	queries := strings.Split(dbInsert, ";")
 

@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-pg/pg"
 	"github.com/jpurdie/authapi"
 	"strings"
@@ -51,14 +52,24 @@ func (s *CompanyStore) Create(cu authapi.CompanyUser) (authapi.CompanyUser, erro
 	}
 
 	tx, err := s.db.Begin()
-	tx.Model(cu.Company).Insert()
+	trErr := tx.Insert(cu.Company)
+	if trErr != nil {
+		fmt.Println(trErr)
+	}
 	cu.User.CompanyID = cu.Company.ID
-	tx.Model(cu.User).Insert()
+	trErr = tx.Insert(cu.User)
+	if trErr != nil {
+		fmt.Println(trErr)
+	}
 	cu.UserID = cu.User.ID
 	cu.CompanyID = cu.Company.ID
-	tx.Model(&cu).Insert()
-	trErr := tx.Commit()
+	trErr = tx.Insert(&cu)
 	if trErr != nil {
+		fmt.Println(trErr)
+	}
+	trErr = tx.Commit()
+	if trErr != nil {
+		fmt.Println(trErr)
 		tx.Rollback()
 	}
 	return cu, err

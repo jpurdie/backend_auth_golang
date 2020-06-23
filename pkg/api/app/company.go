@@ -37,6 +37,7 @@ var (
 	ErrEmailAlreadyExists  = echo.NewHTTPError(http.StatusConflict, "Email already exists.")
 	ErrPasswordsNotMaching = echo.NewHTTPError(http.StatusBadRequest, "passwords do not match")
 	ErrPasswordNotValid    = echo.NewHTTPError(http.StatusBadRequest, "passwords are not in the valid format")
+	UnknownError           = echo.NewHTTPError(http.StatusBadRequest, "There was an unknown error")
 )
 
 type createOrgUserReq struct {
@@ -74,11 +75,12 @@ func (rs *CompanyResource) create(c echo.Context) error {
 		Active:     true,
 	}
 	x := uuid.New()
-	cu := authapi.CompanyUser{Company: &company, User: &u, UUID: x}
-
+	cu := authapi.CompanyUser{Company: &company, User: &u, UUID: x, RoleID: 500}
 	externalID, err := Auth0.CreateUser(u)
 	if err != nil {
-		return err
+		fmt.Println(err)
+
+		return UnknownError
 	}
 
 	u.ExternalID = externalID
@@ -87,13 +89,14 @@ func (rs *CompanyResource) create(c echo.Context) error {
 	if err != nil {
 		fmt.Println(err)
 		err = Auth0.DeleteUser(u) //need to delete user from auth0 since the database failed
-		return err
+		return UnknownError
 	}
 
 	err = Auth0.SendVerificationEmail(u)
 
 	if err != nil {
-		return err
+		fmt.Println(err)
+		return UnknownError
 	}
 
 	return c.JSON(http.StatusCreated, companyUser)

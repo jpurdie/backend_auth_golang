@@ -8,7 +8,7 @@ import (
 // Base contains common fields for all tables
 type Base struct {
 	ID        int       `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at" pg:"default:now()"`
 	UpdatedAt time.Time `json:"updated_at"`
 	DeletedAt time.Time `json:"deleted_at,omitempty" pg:",soft_delete"`
 }

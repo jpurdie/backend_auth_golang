@@ -34,16 +34,13 @@ func (a *API) Router(r *echo.Group) {
 
 	companies := r.Group("/companies")
 	a.Companies.router(companies)
-	authMiddleware := authMw.Middleware()
+
+	// Everything after here requires authentication
+	authMiddleware := authMw.Authenticate()
 	r.Use(authMiddleware)
 
 	r.GET("/ping", func(c echo.Context) error {
-		cc := c.(*authMw.CustomContext)
-		x := cc.Sub()
-		if 1 == 2 {
-			print(x)
-		}
 		return c.String(http.StatusOK, "pong")
-	})
+	}, authMw.Authorize([]string{"owner", "admin", "user"}))
 
 }
