@@ -7,10 +7,10 @@ import (
 
 // Base contains common fields for all tables
 type Base struct {
-	ID        int       `json:"id"`
-	CreatedAt time.Time `json:"created_at" pg:"default:now()"`
-	UpdatedAt time.Time `json:"updated_at"`
-	DeletedAt time.Time `json:"deleted_at,omitempty" pg:",soft_delete"`
+	ID        int       `json:"-"`
+	CreatedAt time.Time `json:"-" pg:"default:now()"`
+	UpdatedAt time.Time `json:"-"`
+	DeletedAt time.Time `json:"-" pg:",soft_delete"`
 }
 
 // ListQuery holds company/location data used for list db queries

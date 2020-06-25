@@ -18,7 +18,7 @@ func main() {
 		panic("Error loading .env file")
 	}
 
-	dbInsert := `INSERT INTO public.companies VALUES (1, now(), now(), NULL, 'admin_company', true);
+	dbInsert := `INSERT INTO public.organizations VALUES (1, now(), now(), NULL, 'admin_organization', true);
 	INSERT INTO public.roles VALUES (500, 500, 'OWNER');
 	INSERT INTO public.roles VALUES (400, 400, 'SUPERUSER');
 	INSERT INTO public.roles VALUES (300, 300, 'ADMIN');
@@ -32,7 +32,7 @@ func main() {
 	db := pg.Connect(u)
 	_, err = db.Exec("SELECT 1")
 	checkErr(err)
-	createSchema(db, &authapi.Company{}, &authapi.Role{}, &authapi.User{}, &authapi.CompanyUser{})
+	createSchema(db, &authapi.Organization{}, &authapi.Role{}, &authapi.User{}, &authapi.OrganizationUser{})
 
 	for _, v := range queries[0 : len(queries)-1] {
 		_, err := db.Exec(v)

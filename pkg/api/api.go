@@ -1,34 +1,3 @@
-// Copyright 2017 Emir Ribic. All rights reserved.
-// Use of this source code is governed by an MIT-style
-// license that can be found in the LICENSE file.
-
-// GORSK - Go(lang) restful starter kit
-//
-// API Docs for GORSK v1
-//
-// 	 Terms Of Service:  N/A
-//     Schemes: http
-//     Version: 2.0.0
-//     License: MIT http://opensource.org/licenses/MIT
-//     Contact: Emir Ribic <ribice@gmail.com> https://ribice.ba
-//     Host: localhost:8080
-//
-//     Consumes:
-//     - application/json
-//
-//     Produces:
-//     - application/json
-//
-//     Security:
-//     - bearer: []
-//
-//     SecurityDefinitions:
-//     bearer:
-//          type: apiKey
-//          name: Authorization
-//          in: header
-//
-// swagger:meta
 package api
 
 import (
@@ -38,10 +7,12 @@ import (
 	"github.com/jpurdie/authapi/pkg/utl/postgres"
 	"github.com/jpurdie/authapi/pkg/utl/server"
 	"github.com/labstack/echo/middleware"
+	"log"
 )
 
 // Start starts the API service
 func Start(cfg *config.Configuration) error {
+	log.Println("Inside Start()")
 
 	db, _ := postgres.DBConn()
 
@@ -54,13 +25,13 @@ func Start(cfg *config.Configuration) error {
 
 	publicAPI, err := public.NewAPI(db)
 
+	publicG := e.Group("/public")
+	publicAPI.Router(publicG)
+
 	appAPI, err := app.NewAPI(db)
 	if err != nil {
 		panic(err)
 	}
-
-	public := e.Group("/public")
-	publicAPI.Router(public)
 	v1 := e.Group("/api/v1")
 	appAPI.Router(v1)
 

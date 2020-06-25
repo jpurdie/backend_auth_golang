@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/utl/redis"
 	"github.com/segmentio/encoding/json"
@@ -35,10 +34,10 @@ func FetchAccessToken() (string, error) {
 	accessToken, _ := rdb.Get(ctx, "auth0_access_token").Result()
 
 	if accessToken != "" {
-		fmt.Println("Access Token is present.")
+		log.Println("Access Token is present.")
 		return accessToken, nil
 	}
-	fmt.Println("Access Token is not present. Going out to Auth0")
+	log.Println("Access Token is not present. Going out to Auth0")
 
 	domain := os.Getenv("AUTH0_DOMAIN")
 	clientId := os.Getenv("AUTH0_CLIENT_ID")
@@ -52,7 +51,7 @@ func FetchAccessToken() (string, error) {
 	req.Header.Add("content-type", "application/json")
 
 	res, _ := http.DefaultClient.Do(req)
-	fmt.Println("HTTP Response Status:", res.StatusCode, http.StatusText(res.StatusCode))
+	log.Println("HTTP Response Status:", res.StatusCode, http.StatusText(res.StatusCode))
 	if res.StatusCode != 201 && res.StatusCode != 200 {
 		return "", errors.New("Unable to get access token")
 	}
@@ -61,7 +60,7 @@ func FetchAccessToken() (string, error) {
 	var atr accessTokenResp
 	json.NewDecoder(res.Body).Decode(&atr)
 
-	fmt.Println(atr)
+	log.Println(atr)
 
 	if res.Body != nil {
 
@@ -98,6 +97,7 @@ type createUserResp struct {
 }
 
 func CreateUser(u authapi.User) (string, error) {
+	log.Println("Inside CreateUser()")
 	accessToken, err := FetchAccessToken()
 	if err != nil {
 		return "", ErrUnableToReachAuth0
@@ -121,10 +121,12 @@ func CreateUser(u authapi.User) (string, error) {
 	client := http.Client{
 		Timeout: timeout,
 	}
+	log.Println("Inside CreateUser()")
 
 	url := "https://" + os.Getenv("AUTH0_DOMAIN") + "/api/v2/users"
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(userReq)
+	log.Println("Inside CreateUser()")
 
 	req, err := http.NewRequest("POST", url, b)
 	req.Header.Add("content-type", "application/json")
@@ -133,27 +135,36 @@ func CreateUser(u authapi.User) (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Inside CreateUser()")
 
 	res, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Inside CreateUser()")
 
 	defer res.Body.Close()
+	log.Println("Inside CreateUser()")
 
 	if res.StatusCode != 201 {
 		log.Println("Unable to create user in Auth0")
 		body, err := ioutil.ReadAll(res.Body)
-		fmt.Println(res)
-		fmt.Println(body)
-		fmt.Println(err)
+		log.Println(res)
+		log.Println(body)
+		log.Println(err)
 		return "", errors.New("Unable to create user in Auth0")
 	}
+	log.Println("Inside CreateUser()")
+
 	var cur createUserResp
 	err = json.NewDecoder(res.Body).Decode(&cur)
 	if err != nil {
+		log.Println("Inside CreateUser()")
+
 		log.Fatal(err)
 	}
+	log.Println("Inside CreateUser()")
+
 	log.Println("cur.UserId", cur.UserId)
 	return cur.UserId, nil
 
@@ -171,9 +182,12 @@ type verEmailResp struct {
 }
 
 func SendVerificationEmail(u authapi.User) error {
+	log.Println("Inside Send Verification")
 
 	accessToken, err := FetchAccessToken()
 	if err != nil {
+		log.Println(err)
+
 		return ErrUnableToReachAuth0
 	}
 	verEmailReq := verEmailReq{
@@ -193,11 +207,13 @@ func SendVerificationEmail(u authapi.User) error {
 
 	defer res.Body.Close()
 	if res.StatusCode != 201 {
+		log.Println(res.StatusCode)
 		return errors.New("Unable to send verification email")
 	}
 
 	var vResp verEmailResp
 	json.NewDecoder(res.Body).Decode(&vResp)
+	log.Println("Inside Send Verification")
 
 	return nil
 

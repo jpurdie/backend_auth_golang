@@ -5,7 +5,6 @@ import (
 	"github.com/jpurdie/authapi/pkg/api/database"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
 	"github.com/labstack/echo"
-	"log"
 	"net/http"
 )
 
@@ -17,30 +16,28 @@ const (
 
 // API provides admin application resources and handlers.
 type API struct {
-	Companies *CompanyResource
+	Organizations *OrganizationResource
 }
 
 // NewAPI configures and returns admin application API.
 func NewAPI(db *pg.DB) (*API, error) {
-	log.Println("Inside NewAPI")
 
-	companyStore := database.NewCompanyStore(db)
-	company := NewCompanyResource(companyStore)
+	organizationStore := database.NewOrganizationStore(db)
+	organization := NewOrganizationResource(organizationStore)
 
 	api := &API{
-		Companies: company,
+		Organizations: organization,
 	}
 	return api, nil
 }
 func (a *API) Router(r *echo.Group) {
-	log.Println("Inside API Router")
 
-	companies := r.Group("/companies")
-	a.Companies.router(companies)
+	organizations := r.Group("/organizations")
+	a.Organizations.router(organizations)
 
 	// Everything after here requires authentication
-	authMiddleware := authMw.Authenticate()
-	r.Use(authMiddleware)
+	//authMiddleware := authMw.Authenticate()
+	//r.Use(authMiddleware)
 
 	r.GET("/ping", func(c echo.Context) error {
 		return c.String(http.StatusOK, "pong")

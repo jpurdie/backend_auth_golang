@@ -51,7 +51,7 @@ func (s Service) GenerateToken(u authapi.User) (string, error) {
 		"id": u.Base.ID,
 		"e":  u.Email,
 		//	"r":   u.Role.AccessLevel,
-		"c": u.CompanyID,
+		"c": u.OrganizationID,
 		//"l":   u.LocationID,
 		"exp": time.Now().Add(s.ttl).Unix(),
 	}).SignedString(s.key)

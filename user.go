@@ -15,8 +15,8 @@ type User struct {
 
 	Token string `json:"-"`
 
-	CompanyID   int           `json:"company_id" pg:"-" sql:"-"`
-	CompanyUser []CompanyUser `json:"-"  pg:",many2many:company_users"`
+	OrganizationID   int                `json:"organization_id" pg:"-" sql:"-"`
+	OrganizationUser []OrganizationUser `json:"-"  pg:",many2many:organization_users"`
 }
 
 // AuthUser represents data stored in JWT token for user
