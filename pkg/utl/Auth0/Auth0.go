@@ -7,7 +7,6 @@ import (
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/utl/redis"
 	"github.com/segmentio/encoding/json"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -18,7 +17,9 @@ import (
 var ctx = context.Background()
 
 var (
-	ErrUnableToReachAuth0 = errors.New("Unable to reach authentication service")
+	ErrUnableToReachAuth0 = errors.New("unable to reach authentication service")
+	ErrUserAlreadyExists  = errors.New("user already exists")
+	ErrUnableToCreateUser = errors.New("unable to create user")
 )
 
 type accessTokenResp struct {
@@ -98,6 +99,8 @@ type createUserResp struct {
 
 func CreateUser(u authapi.User) (string, error) {
 	log.Println("Inside CreateUser()")
+	const op = "Auth0.CreateUser"
+
 	accessToken, err := FetchAccessToken()
 	if err != nil {
 		return "", ErrUnableToReachAuth0
@@ -117,7 +120,7 @@ func CreateUser(u authapi.User) (string, error) {
 		VerifyEmail:   false,
 	}
 
-	timeout := time.Duration(5 * time.Second)
+	timeout := time.Duration(10 * time.Second)
 	client := http.Client{
 		Timeout: timeout,
 	}
@@ -135,39 +138,34 @@ func CreateUser(u authapi.User) (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Inside CreateUser()")
 
 	res, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Inside CreateUser()")
 
 	defer res.Body.Close()
-	log.Println("Inside CreateUser()")
-
-	if res.StatusCode != 201 {
-		log.Println("Unable to create user in Auth0")
-		body, err := ioutil.ReadAll(res.Body)
-		log.Println(res)
-		log.Println(body)
-		log.Println(err)
-		return "", errors.New("Unable to create user in Auth0")
+	if res.StatusCode == 409 {
+		return "", &authapi.Error{
+			Op:   op,
+			Code: authapi.ECONFLICT,
+			Err:  ErrUserAlreadyExists,
+		}
+	} else if res.StatusCode != 201 {
+		return "", &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  ErrUnableToCreateUser,
+		}
 	}
-	log.Println("Inside CreateUser()")
 
 	var cur createUserResp
 	err = json.NewDecoder(res.Body).Decode(&cur)
 	if err != nil {
-		log.Println("Inside CreateUser()")
-
 		log.Fatal(err)
 	}
-	log.Println("Inside CreateUser()")
 
-	log.Println("cur.UserId", cur.UserId)
 	return cur.UserId, nil
-
 }
 
 type verEmailReq struct {
