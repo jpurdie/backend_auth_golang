@@ -63,7 +63,7 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 			orgIdReq := c.QueryParam("org_id")
 			orgUUID, err := uuid.Parse(orgIdReq)
 			if err != nil {
-				return c.String(http.StatusUnprocessableEntity, "")
+				return c.JSON(http.StatusUnprocessableEntity, "")
 			}
 			//made it here. is valid UUID
 
@@ -72,27 +72,32 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 			db, _ := postgres.DBConn()
 			defer db.Close()
 
-			userRole := new(authapi.Role)
+			roleName, orgID, userID := "", "", ""
 
-			err = db.Model(userRole).
+			err = db.Model((*authapi.Role)(nil)).
+				Column("role.name", "o.id", "u.id").
 				Join("JOIN organization_users AS ou ON ou.role_id = role.id").
 				Join("JOIN organizations AS o ON ou.role_id = role.id").
 				Join("JOIN users AS u ON u.id = ou.user_id").
 				Where("o.uuid = ?", orgUUID.String()).
 				Where("u.external_id = ?", c.Get("sub").(string)).
-				Select()
+				Select(&roleName, &orgID, &userID)
 
 			if err != nil {
 				log.Println(err)
-				return c.String(http.StatusInternalServerError, "")
+				return c.JSON(http.StatusInternalServerError, "")
 			}
 
 			for _, role := range requiredRoles {
-				if strings.ToLower(role) == strings.ToLower(userRole.Name) {
+				if strings.ToLower(role) == strings.ToLower(roleName) {
+
+					c.Set("orgID", orgID)
+					c.Set("roleName", roleName)
+					c.Set("userID", userID)
 					return next(c)
 				}
 			}
-			return c.String(http.StatusInternalServerError, "")
+			return c.JSON(http.StatusUnauthorized, "")
 
 		}
 	}

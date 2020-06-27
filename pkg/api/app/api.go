@@ -58,6 +58,6 @@ func (a *API) Router(r *echo.Group) {
 
 	r.GET("/ping", func(c echo.Context) error {
 		return c.String(http.StatusOK, "pong")
-	}, authMw.CheckAuthorization([]string{"owner", "admin"}))
+	}, authMw.CheckAuthorization([]string{"owner", "admin", "user"}))
 
 }

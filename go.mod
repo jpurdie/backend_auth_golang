@@ -22,6 +22,7 @@ require (
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/lib/pq v1.3.0
+	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/onsi/ginkgo v1.12.0 // indirect
