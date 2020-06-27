@@ -13,8 +13,6 @@ type User struct {
 	Active     bool   `json:"active"`
 	ExternalID string `json:"auth0id"`
 
-	Token string `json:"-"`
-
 	OrganizationID   int                `json:"organization_id" pg:"-" sql:"-"`
 	OrganizationUser []OrganizationUser `json:"-"  pg:",many2many:organization_users"`
 }

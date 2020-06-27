@@ -18,12 +18,20 @@ func main() {
 		panic("Error loading .env file")
 	}
 
-	dbInsert := `INSERT INTO public.organizations VALUES (1, now(), now(), NULL, 'admin_organization', true);
+	dbInsert := ""
+	dbInsert = `INSERT INTO public.organizations VALUES (1, now(), now(), NULL, 'admin_organization', true);
 	INSERT INTO public.roles VALUES (500, 500, 'OWNER');
 	INSERT INTO public.roles VALUES (400, 400, 'SUPERUSER');
 	INSERT INTO public.roles VALUES (300, 300, 'ADMIN');
 	INSERT INTO public.roles VALUES (200, 200, 'SUPERVISOR');
-	INSERT INTO public.roles VALUES (100, 100, 'USER');`
+	INSERT INTO public.roles VALUES (100, 100, 'USER');
+
+	CREATE INDEX orgs_uuid on organizations(uuid);
+	CREATE INDEX org_users_uuid on organization_users(uuid);
+	CREATE INDEX roles_uuid on roles(name);
+	CREATE INDEX users_externalID on users(external_id);
+	CREATE INDEX users_email on users(email);
+`
 	var psn = os.Getenv("DATABASE_URL")
 	queries := strings.Split(dbInsert, ";")
 
@@ -32,7 +40,11 @@ func main() {
 	db := pg.Connect(u)
 	_, err = db.Exec("SELECT 1")
 	checkErr(err)
-	createSchema(db, &authapi.Organization{}, &authapi.Role{}, &authapi.User{}, &authapi.OrganizationUser{})
+	createSchema(db, &authapi.Organization{})
+	createSchema(db, &authapi.Role{})
+	createSchema(db, &authapi.User{})
+	createSchema(db, &authapi.OrganizationUser{})
+	createSchema(db, &authapi.Invitation{})
 
 	for _, v := range queries[0 : len(queries)-1] {
 		_, err := db.Exec(v)

@@ -1,11 +1,8 @@
 package database
 
 import (
-	"errors"
 	"github.com/go-pg/pg"
 	"github.com/jpurdie/authapi"
-	"log"
-	"strings"
 )
 
 type OrganizationStore struct {
@@ -18,14 +15,8 @@ func NewOrganizationStore(db *pg.DB) *OrganizationStore {
 	}
 }
 
-//
-// Custom errors
-var (
-	ErrCompAlreadyExists  = errors.New("Organization name already exists")
-	ErrEmailAlreadyExists = errors.New("Email already exists")
-)
-
 func (s *OrganizationStore) ListAccessible(u *authapi.User, includeInactive bool) ([]authapi.Organization, error) {
+	op := "ListAccessible"
 	var companies []authapi.Organization
 	inactiveSQL := "organization.active = TRUE"
 	if includeInactive {
@@ -40,54 +31,11 @@ func (s *OrganizationStore) ListAccessible(u *authapi.User, includeInactive bool
 		Select()
 
 	if err != nil {
-		return nil, err
+		return nil, &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
 	}
 	return companies, nil
-}
-
-// Create creates a new user on database
-func (s *OrganizationStore) Create(cu authapi.OrganizationUser) error {
-
-	var organization = new(authapi.Organization)
-
-	count, err := s.db.Model(organization).Where("lower(name) = ? and deleted_at is null", strings.ToLower(cu.Organization.Name)).Count()
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return ErrCompAlreadyExists
-	}
-	var user = new(authapi.User)
-
-	count, err = s.db.Model(user).Where("lower(email) = ? and deleted_at is null", strings.ToLower(cu.User.Email)).Count()
-
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return ErrEmailAlreadyExists
-	}
-
-	tx, err := s.db.Begin()
-	trErr := tx.Insert(cu.Organization)
-	if trErr != nil {
-		log.Println(trErr)
-	}
-	cu.User.OrganizationID = cu.Organization.ID
-	trErr = tx.Insert(cu.User)
-	if trErr != nil {
-		log.Println(trErr)
-	}
-	cu.UserID = cu.User.ID
-	cu.OrganizationID = cu.Organization.ID
-	trErr = tx.Insert(&cu)
-	if trErr != nil {
-		log.Println(trErr)
-	}
-	trErr = tx.Commit()
-	if trErr != nil {
-		log.Println(trErr)
-		tx.Rollback()
-	}
-	return err
 }

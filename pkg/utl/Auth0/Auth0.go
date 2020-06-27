@@ -115,7 +115,7 @@ func CreateUser(u authapi.User) (string, error) {
 		FamilyName:    u.LastName,
 		Name:          u.FirstName + " " + u.LastName,
 		Nickname:      u.FirstName,
-		Connection:    "VitaeDB",
+		Connection:    os.Getenv("AUTH0_CONNECTION"),
 		Password:      u.Password,
 		VerifyEmail:   false,
 	}

@@ -1,11 +1,15 @@
 package auth
 
 import (
-	jwtUtil "github.com/jpurdie/authapi/pkg/utl/jwt"
-	"net/http"
-	//"net/http"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
+	"github.com/jpurdie/authapi"
+	jwtUtil "github.com/jpurdie/authapi/pkg/utl/jwt"
+	"github.com/jpurdie/authapi/pkg/utl/postgres"
 	"github.com/labstack/echo"
+	"log"
+	"net/http"
+	"strings"
 )
 
 // TokenParser represents JWT token parser
@@ -51,18 +55,45 @@ func Authenticate() echo.MiddlewareFunc {
 	}
 }
 
-func Authorize(roles []string) echo.MiddlewareFunc {
+func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			//action = strings.Split(permname, ":")[0]
-			//object = strings.Split(permname, ":")[1]
-			userRole := "admin"
-			for _, role := range roles {
-				if role == userRole {
+
+			//checking org ID is valid UUID
+			orgIdReq := c.QueryParam("org_id")
+			orgUUID, err := uuid.Parse(orgIdReq)
+			if err != nil {
+				return c.String(http.StatusUnprocessableEntity, "")
+			}
+			//made it here. is valid UUID
+
+			log.Println("Received request with " + orgUUID.String())
+
+			db, _ := postgres.DBConn()
+			defer db.Close()
+
+			userRole := new(authapi.Role)
+
+			err = db.Model(userRole).
+				Join("JOIN organization_users AS ou ON ou.role_id = role.id").
+				Join("JOIN organizations AS o ON ou.role_id = role.id").
+				Join("JOIN users AS u ON u.id = ou.user_id").
+				Where("o.uuid = ?", orgUUID.String()).
+				Where("u.external_id = ?", c.Get("sub").(string)).
+				Select()
+
+			if err != nil {
+				log.Println(err)
+				return c.String(http.StatusInternalServerError, "")
+			}
+
+			for _, role := range requiredRoles {
+				if strings.ToLower(role) == strings.ToLower(userRole.Name) {
 					return next(c)
 				}
 			}
-			return c.String(http.StatusUnauthorized, "")
+			return c.String(http.StatusInternalServerError, "")
+
 		}
 	}
 }

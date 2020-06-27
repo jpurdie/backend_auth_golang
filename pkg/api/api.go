@@ -32,6 +32,7 @@ func Start(cfg *config.Configuration) error {
 	if err != nil {
 		panic(err)
 	}
+
 	v1 := e.Group("/api/v1")
 	appAPI.Router(v1)
 
