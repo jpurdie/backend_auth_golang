@@ -29,7 +29,7 @@ func Headers() echo.MiddlewareFunc {
 // CORS adds Cross-Origin Resource Sharing support
 func CORS() echo.MiddlewareFunc {
 	return middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{os.Getenv("APP_CORS_WEB")},
+		AllowOrigins:     []string{os.Getenv("APP_WEB")},
 		MaxAge:           86400,
 		AllowMethods:     []string{"POST", "GET", "PUT", "DELETE", "PATCH", "HEAD"},
 		AllowHeaders:     []string{"*"},

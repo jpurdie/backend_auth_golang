@@ -3,8 +3,8 @@ package app
 import (
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
-	AuthUtil "github.com/jpurdie/authapi/pkg/utl/Auth"
-	"github.com/jpurdie/authapi/pkg/utl/Auth0"
+	AuthUtil "github.com/jpurdie/authapi/pkg/utl/auth"
+	"github.com/jpurdie/authapi/pkg/utl/auth0"
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
@@ -65,7 +65,7 @@ func (rs *AuthOrganizationResource) createAuthOrganization(c echo.Context) error
 		Active:     true,
 	}
 	cu := authapi.OrganizationUser{Organization: &organization, User: &u, UUID: uuid.New(), RoleID: 500}
-	externalID, err := Auth0.CreateUser(u)
+	externalID, err := auth0.CreateUser(u)
 
 	if err != nil {
 		log.Println(err)
@@ -81,7 +81,7 @@ func (rs *AuthOrganizationResource) createAuthOrganization(c echo.Context) error
 
 	if len(externalID) == 0 { //double checking external ID
 		log.Println(err)
-		err = Auth0.DeleteUser(u) //need to delete user from auth0 since the database failed
+		err = auth0.DeleteUser(u) //need to delete user from auth0 since the database failed
 		return c.JSON(http.StatusInternalServerError, UnknownError)
 	}
 
@@ -89,11 +89,11 @@ func (rs *AuthOrganizationResource) createAuthOrganization(c echo.Context) error
 	err = rs.Store.Create(cu)
 	if err != nil {
 		log.Println(err)
-		err = Auth0.DeleteUser(u) //need to delete user from auth0 since the database failed
+		err = auth0.DeleteUser(u) //need to delete user from auth0 since the database failed
 		return c.JSON(http.StatusInternalServerError, UnknownError)
 	}
 
-	err = Auth0.SendVerificationEmail(u)
+	err = auth0.SendVerificationEmail(u)
 
 	if err != nil {
 		log.Println(err)

@@ -19,6 +19,7 @@ type API struct {
 	AuthOrganizations *AuthOrganizationResource
 	Organizations     *OrganizationResource
 	Invitations       *InvitationResource
+	Authorizations    *AuthorizationResource
 }
 
 // NewAPI configures and returns admin application API.
@@ -33,10 +34,14 @@ func NewAPI(db *pg.DB) (*API, error) {
 	invitationStore := database.NewInvitationStore(db)
 	invitation := NewInvitationResource(invitationStore)
 
+	authorizationStore := database.NewAuthorizationStore(db)
+	authorization := NewAuthorizationResource(authorizationStore)
+
 	api := &API{
 		Organizations:     organization,
 		AuthOrganizations: authOrganization,
 		Invitations:       invitation,
+		Authorizations:    authorization,
 	}
 	return api, nil
 }

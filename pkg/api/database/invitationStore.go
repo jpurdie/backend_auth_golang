@@ -15,6 +15,21 @@ func NewInvitationStore(db *pg.DB) *InvitationStore {
 	}
 }
 
+func (s *InvitationStore) Create(i authapi.Invitation) (authapi.Invitation, error) {
+
+	op := "Create"
+	_, err := s.db.Model(&i).Returning("*").Insert()
+
+	if err != nil {
+		return authapi.Invitation{}, &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+	return authapi.Invitation{}, nil
+}
+
 func (s *InvitationStore) List(u *authapi.User, includeExpired bool) ([]authapi.Invitation, error) {
 	op := "List"
 	invitations := make([]authapi.Invitation, 0)

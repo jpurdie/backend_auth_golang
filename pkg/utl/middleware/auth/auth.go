@@ -58,6 +58,7 @@ func Authenticate() echo.MiddlewareFunc {
 func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			op := "CheckAuthorization"
 
 			//checking org ID is valid UUID
 			orgIdReq := c.QueryParam("org_id")
@@ -69,8 +70,18 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 
 			log.Println("Received request with " + orgUUID.String())
 
-			db, _ := postgres.DBConn()
+			db, err := postgres.DBConn()
+			log.Println(db.PoolStats())
 			defer db.Close()
+
+			if err != nil {
+				log.Panicln(&authapi.Error{
+					Op:   op,
+					Code: authapi.EINTERNAL,
+					Err:  err,
+				})
+				//return c.JSON(http.StatusInternalServerError, "")
+			}
 
 			roleName, orgID, userID := "", "", ""
 
@@ -85,7 +96,7 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 
 			if err != nil {
 				log.Println(err)
-				return c.JSON(http.StatusInternalServerError, "")
+				return c.JSON(http.StatusUnauthorized, "")
 			}
 
 			for _, role := range requiredRoles {

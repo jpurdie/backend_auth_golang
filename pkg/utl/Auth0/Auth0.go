@@ -1,4 +1,4 @@
-package Auth0
+package auth0
 
 import (
 	"bytes"

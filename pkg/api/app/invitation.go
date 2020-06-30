@@ -1,13 +1,11 @@
 package app
 
 import (
-	"context"
-	"fmt"
 	"github.com/jpurdie/authapi"
-	authUtil "github.com/jpurdie/authapi/pkg/utl/Auth"
+	authUtil "github.com/jpurdie/authapi/pkg/utl/auth"
+	email "github.com/jpurdie/authapi/pkg/utl/mail"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
 	"github.com/labstack/echo"
-	"github.com/mailgun/mailgun-go/v4"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +15,7 @@ import (
 
 type InvitationStore interface {
 	List(u *authapi.User, includeExpired bool) ([]authapi.Invitation, error)
+	Create(i authapi.Invitation) (authapi.Invitation, error)
 }
 
 // Invitation Resource implements account management handler.
@@ -47,16 +46,15 @@ type createInvitationReq struct {
 }
 
 func (rs *InvitationResource) create(c echo.Context) error {
-
+	//op := "create"
 	r := new(createInvitationReq)
 
 	if err := c.Bind(r); err != nil {
+		log.Println(err)
 		return err
 	}
 
-	u := authapi.User{
-		ExternalID: c.Get("sub").(string),
-	}
+	u := authapi.User{}
 
 	numDaysExp, err := strconv.Atoi(os.Getenv("INVITATION_EXPIRATION_DAYS"))
 	if err != nil {
@@ -79,36 +77,30 @@ func (rs *InvitationResource) create(c echo.Context) error {
 		InvitorID:      invitorID,
 		OrganizationID: orgID,
 	}
-	log.Println(invite.TokenStr)
-	log.Println(invite.Token)
+	log.Println("This should be emailed " + invite.TokenStr)
+	log.Println("This should be saved to db " + invite.Token)
 
-	// Create an instance of the Mailgun Client
-
-	// TODO: Move this to a util!
-	//mg := mailgun.NewMailgun("thepolyglotdeveloper.com", os.Getenv("MAILGUN_API_KEY"), os.Getenv("MAILGUN_PUB_VAL_KEY"))
-	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"), os.Getenv("MAILGUN_API_KEY"))
-
-	sender := "invitations@vitae.com"
-	subject := "You've been invited to Vitae"
-	body := "You've been invited to Vitae! \n\nFollow this link: \thttp://localhost.vitae.com/auth/t=" + invite.TokenStr
-	recipient := invite.Email
-
-	// The message object allows you to add attachments and Bcc recipients
-	message := mg.NewMessage(sender, subject, body, recipient)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	// Send the message with a 10 second timeout
-	resp, id, err := mg.Send(ctx, message)
-
+	//save invite
+	_, err = rs.Store.Create(invite)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		if errCode := authapi.ErrorCode(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
 
-	fmt.Printf("ID: %s Resp: %s\n", id, resp)
+	//send invite after save
+	err = email.SendInvitationEmail(&invite)
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorCode(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+	}
 
-	return c.JSON(http.StatusCreated, invite)
+	return c.JSON(http.StatusCreated, "")
 }
 
 type listInvitationsResp struct {
@@ -130,7 +122,6 @@ func (rs *InvitationResource) list(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 		}
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
-
 	}
 	resp := listInvitationsResp{
 		Invitations: Invitations,

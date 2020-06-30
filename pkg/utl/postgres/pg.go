@@ -27,12 +27,16 @@ func DBConn() (*pg.DB, error) {
 
 	opt, err := pg.ParseURL(os.Getenv("DATABASE_URL"))
 	if err != nil {
+		log.Println(err)
 		panic(err)
 	}
-
+	opt.PoolSize = 3
+	opt.PoolTimeout = time.Second * 5
+	opt.IdleCheckFrequency = time.Second * 10
 	db := pg.Connect(opt)
 	db = db.WithTimeout(time.Second * time.Duration(5))
 	if err := checkConn(db); err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	if true {
