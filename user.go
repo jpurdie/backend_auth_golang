@@ -1,18 +1,20 @@
 package authapi
 
+import "github.com/google/uuid"
+
 type User struct {
 	Base
-	FirstName  string `json:"first_name"`
-	LastName   string `json:"last_name"`
-	Password   string `json:"-" pg:"-" sql:"-"`
-	Email      string `json:"email"`
-	Username   string `json:"username"`
-	Mobile     string `json:"mobile,omitempty"`
-	Phone      string `json:"phone,omitempty"`
-	Address    string `json:"address,omitempty"`
-	Active     bool   `json:"active"`
-	ExternalID string `json:"auth0id"`
-
+	FirstName        string             `json:"first_name"`
+	LastName         string             `json:"last_name"`
+	Password         string             `json:"-" pg:"-" sql:"-"`
+	Email            string             `json:"email"`
+	Username         string             `json:"username"`
+	Mobile           string             `json:"mobile,omitempty"`
+	Phone            string             `json:"phone,omitempty"`
+	Address          string             `json:"address,omitempty"`
+	Active           bool               `json:"active"`
+	ExternalID       string             `json:"auth0id" pg:",unique"`
+	UUID             uuid.UUID          `json:"uuid" pg:",unique,type:uuid"`
 	OrganizationID   int                `json:"organization_id" pg:"-" sql:"-"`
 	OrganizationUser []OrganizationUser `json:"-"  pg:",many2many:organization_users"`
 }

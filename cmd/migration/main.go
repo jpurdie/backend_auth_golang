@@ -18,8 +18,8 @@ func main() {
 		panic("Error loading .env file")
 	}
 
-	dbInsert := ""
-	dbInsert = `INSERT INTO public.organizations VALUES (1, now(), now(), NULL, 'admin_organization', true);
+	dbInsert := `
+
 	INSERT INTO public.roles VALUES (500, 500, 'OWNER');
 	INSERT INTO public.roles VALUES (400, 400, 'SUPERUSER');
 	INSERT INTO public.roles VALUES (300, 300, 'ADMIN');
@@ -29,9 +29,11 @@ func main() {
 	CREATE INDEX orgs_uuid on organizations(uuid);
 	CREATE INDEX org_users_uuid on organization_users(uuid);
 	CREATE INDEX roles_uuid on roles(name);
+	CREATE INDEX users_uuid on users(uuid);
 	CREATE INDEX users_externalID on users(external_id);
 	CREATE INDEX users_email on users(email);
-`
+
+	`
 	var psn = os.Getenv("DATABASE_URL")
 	queries := strings.Split(dbInsert, ";")
 

@@ -7,5 +7,5 @@ type Organization struct {
 	Name             string             `json:"name"`
 	Active           bool               `json:"active"`
 	OrganizationUser []OrganizationUser `json:"-" pg:",many2many:organization_users"`
-	UUID             uuid.UUID          `json:"uuid" pg:",unique"`
+	UUID             uuid.UUID          `json:"uuid" pg:",unique,type:uuid"`
 }

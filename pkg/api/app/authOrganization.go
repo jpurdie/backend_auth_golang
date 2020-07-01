@@ -88,6 +88,7 @@ func (rs *AuthOrganizationResource) createAuthOrganization(c echo.Context) error
 	u.ExternalID = externalID
 	err = rs.Store.Create(cu)
 	if err != nil {
+
 		log.Println(err)
 		err = auth0.DeleteUser(u) //need to delete user from auth0 since the database failed
 		return c.JSON(http.StatusInternalServerError, UnknownError)

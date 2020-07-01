@@ -61,7 +61,7 @@ func FetchAccessToken() (string, error) {
 	var atr accessTokenResp
 	json.NewDecoder(res.Body).Decode(&atr)
 
-	log.Println(atr)
+	log.Println("Access token length " + string(len(atr.AccessToken)))
 
 	if res.Body != nil {
 
@@ -218,7 +218,7 @@ func SendVerificationEmail(u authapi.User) error {
 }
 
 func DeleteUser(u authapi.User) error {
-
+	log.Println("Deleting Auth0 user " + u.ExternalID)
 	accessToken, err := FetchAccessToken()
 	if err != nil {
 		return ErrUnableToReachAuth0
