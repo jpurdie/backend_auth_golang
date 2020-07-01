@@ -30,15 +30,15 @@ func (s *InvitationStore) Create(i authapi.Invitation) (authapi.Invitation, erro
 	return authapi.Invitation{}, nil
 }
 
-func (s *InvitationStore) List(u *authapi.User, includeExpired bool) ([]authapi.Invitation, error) {
+func (s *InvitationStore) List(o *authapi.Organization, includeExpired bool) ([]authapi.Invitation, error) {
 	op := "List"
 	invitations := make([]authapi.Invitation, 0)
-	inactiveSQL := "invitation.expires_at = NOW()"
+	inactiveSQL := "invitation.expires_at >= NOW()"
 	if includeExpired {
 		inactiveSQL = "1=1" //will return inactive and active
 	}
 	err := s.db.Model(&invitations).
-		Where("invitation.organization_id = ?", u.OrganizationID).
+		Where("invitation.organization_id = ?", o.ID).
 		Where(inactiveSQL).
 		Order("invitation.expires_at").
 		Select()

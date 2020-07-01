@@ -12,4 +12,5 @@ type Invitation struct {
 	OrganizationID int           `json:"_"`
 	Organization   *Organization `json:"-"`
 	Email          string        `json:"email"` //email of the user being invited
+	Used           bool          `json:used`
 }

@@ -14,7 +14,7 @@ import (
 )
 
 type InvitationStore interface {
-	List(u *authapi.User, includeExpired bool) ([]authapi.Invitation, error)
+	List(o *authapi.Organization, includeExpired bool) ([]authapi.Invitation, error)
 	Create(i authapi.Invitation) (authapi.Invitation, error)
 }
 
@@ -110,11 +110,10 @@ type listInvitationsResp struct {
 func (rs *InvitationResource) list(c echo.Context) error {
 	log.Println("Inside listTokens(first)")
 
-	u := authapi.User{
-		ExternalID: c.Get("sub").(string),
-	}
+	o := authapi.Organization{}
+	o.ID, _ = strconv.Atoi(c.Get("orgID").(string))
 
-	Invitations, err := rs.Store.List(&u, false)
+	Invitations, err := rs.Store.List(&o, false)
 
 	if err != nil {
 		log.Println(err)
