@@ -17,6 +17,7 @@ const (
 // API provides admin application resources and handlers.
 type API struct {
 	AuthOrganizations *AuthOrganizationResource
+	AuthInvitations   *AuthInvitationResource
 	Organizations     *OrganizationResource
 	Invitations       *InvitationResource
 	Authorizations    *AuthorizationResource
@@ -27,6 +28,9 @@ func NewAPI(db *pg.DB) (*API, error) {
 
 	authOrganizationStore := database.NewAuthOrganizationStore(db)
 	authOrganization := NewAuthOrganizationResource(authOrganizationStore)
+
+	authInvitationStore := database.NewAuthInvitationStore(db)
+	authInvitation := NewAuthInvitationResource(authInvitationStore)
 
 	organizationStore := database.NewOrganizationStore(db)
 	organization := NewOrganizationResource(organizationStore)
@@ -40,6 +44,7 @@ func NewAPI(db *pg.DB) (*API, error) {
 	api := &API{
 		Organizations:     organization,
 		AuthOrganizations: authOrganization,
+		AuthInvitations:   authInvitation,
 		Invitations:       invitation,
 		Authorizations:    authorization,
 	}
@@ -49,6 +54,9 @@ func (a *API) Router(r *echo.Group) {
 
 	authOrganizations := r.Group("/auth/organizations")
 	a.AuthOrganizations.router(authOrganizations)
+
+	authInvitations := r.Group("/auth/invitations")
+	a.AuthInvitations.router(authInvitations)
 
 	authMiddleware := authMw.Authenticate()
 	r.Use(authMiddleware)

@@ -73,12 +73,12 @@ func (rs *InvitationResource) create(c echo.Context) error {
 		Invitor:        &u,
 		TokenStr:       tokenStr,
 		ExpiresAt:      &expiresAt,
-		Token:          tokenHash,
+		TokenHash:      tokenHash,
 		InvitorID:      invitorID,
 		OrganizationID: orgID,
 	}
 	log.Println("This should be emailed " + invite.TokenStr)
-	log.Println("This should be saved to db " + invite.Token)
+	log.Println("This should be saved to db " + invite.TokenHash)
 
 	//save invite
 	_, err = rs.Store.Create(invite)
