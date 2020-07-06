@@ -14,7 +14,7 @@ type User struct {
 	Address          string             `json:"address,omitempty"`
 	Active           bool               `json:"active"`
 	ExternalID       string             `json:"auth0id" pg:",unique"`
-	UUID             uuid.UUID          `json:"uuid" pg:",unique,type:uuid"`
+	UUID             uuid.UUID          `json:"uuid" pg:",unique,type:uuid,notnull"`
 	OrganizationID   int                `json:"organization_id" pg:"-" sql:"-"`
 	OrganizationUser []OrganizationUser `json:"-"  pg:",many2many:organization_users"`
 }

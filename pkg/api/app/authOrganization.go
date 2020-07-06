@@ -63,6 +63,7 @@ func (rs *AuthOrganizationResource) createAuthOrganization(c echo.Context) error
 		LastName:   r.LastName,
 		ExternalID: "",
 		Active:     true,
+		UUID:       uuid.New(),
 	}
 	cu := authapi.OrganizationUser{Organization: &organization, User: &u, UUID: uuid.New(), RoleID: 500}
 	externalID, err := auth0.CreateUser(u)

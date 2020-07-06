@@ -15,6 +15,6 @@ type Invitation struct {
 	OrganizationID int           `json:"-"`
 	Organization   *Organization `json:"organization"`
 	Email          string        `json:"email"` //email of the user being invited
-	Used           bool          `json:"used"`
+	Used           bool          `json:"used" pg:"default:FALSE"`
 	UUID           uuid.UUID     `json:"-" pg:",unique,type:uuid"`
 }
