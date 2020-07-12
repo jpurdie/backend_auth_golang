@@ -14,8 +14,9 @@ import (
 )
 
 type InvitationStore interface {
-	List(o *authapi.Organization, includeExpired bool) ([]authapi.Invitation, error)
+	List(o *authapi.Organization, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
 	Create(i authapi.Invitation) (authapi.Invitation, error)
+	Delete(i authapi.Invitation) error
 }
 
 // Invitation Resource implements account management handler.
@@ -31,16 +32,35 @@ func NewInvitationResource(store InvitationStore) *InvitationResource {
 func (rs *InvitationResource) router(r *echo.Group) {
 	r.GET("", rs.list, authMw.CheckAuthorization([]string{"owner", "admin"}))
 	r.POST("", rs.create, authMw.CheckAuthorization([]string{"owner", "admin"}))
+	r.DELETE("/:email", rs.delete, authMw.CheckAuthorization([]string{"owner", "admin"}))
 }
 
 var (
-//	ErrEmailAlreadyExists   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}}
-
+	CannotFindInvitationErr = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusNotFound, Message: "Cannot find invitation"}}
 )
 
-type createInvitationResp struct {
-	Invitation authapi.Invitation `json:"invitation"`
+func (rs *InvitationResource) delete(c echo.Context) error {
+	if len(c.Param("email")) == 0 {
+		return c.JSON(http.StatusNotFound, CannotFindInvitationErr)
+	}
+	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
+
+	i := authapi.Invitation{
+		OrganizationID: orgID,
+		Email:          c.Param("email"),
+	}
+	//delete invite
+	err := rs.Store.Delete(i)
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorCode(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+	}
+	return c.JSON(http.StatusOK, "")
 }
+
 type createInvitationReq struct {
 	Email string `json:"email" validate:"required,email"`
 }
@@ -80,6 +100,15 @@ func (rs *InvitationResource) create(c echo.Context) error {
 	log.Println("This should be emailed " + invite.TokenStr)
 	log.Println("This should be saved to db " + invite.TokenHash)
 
+	err = rs.Store.Delete(invite)
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorCode(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+	}
+
 	//save invite
 	_, err = rs.Store.Create(invite)
 	if err != nil {
@@ -113,7 +142,7 @@ func (rs *InvitationResource) list(c echo.Context) error {
 	o := authapi.Organization{}
 	o.ID, _ = strconv.Atoi(c.Get("orgID").(string))
 
-	Invitations, err := rs.Store.List(&o, false)
+	Invitations, err := rs.Store.List(&o, false, false)
 
 	if err != nil {
 		log.Println(err)

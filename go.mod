@@ -17,6 +17,7 @@ require (
 	github.com/go-redis/redis/v8 v8.0.0-beta.5
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/uuid v1.1.1
+	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/joho/godotenv v1.3.0 // indirect
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect
