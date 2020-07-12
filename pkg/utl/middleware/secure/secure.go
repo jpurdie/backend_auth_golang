@@ -3,7 +3,7 @@ package secure
 import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"os"
+	"net/http"
 )
 
 // Headers adds general security headers for basic security measures
@@ -29,9 +29,9 @@ func Headers() echo.MiddlewareFunc {
 // CORS adds Cross-Origin Resource Sharing support
 func CORS() echo.MiddlewareFunc {
 	return middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{os.Getenv("APP_WEB")},
+		AllowOrigins:     []string{"*"},
 		MaxAge:           86400,
-		AllowMethods:     []string{"POST", "GET", "PUT", "DELETE", "PATCH", "HEAD"},
+		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete, http.MethodOptions},
 		AllowHeaders:     []string{"*"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,

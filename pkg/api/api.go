@@ -6,7 +6,6 @@ import (
 	"github.com/jpurdie/authapi/pkg/utl/config"
 	"github.com/jpurdie/authapi/pkg/utl/postgres"
 	"github.com/jpurdie/authapi/pkg/utl/server"
-	"github.com/labstack/echo/middleware"
 	"log"
 )
 
@@ -14,12 +13,12 @@ import (
 func Start(cfg *config.Configuration) error {
 	log.Println("Inside Start()")
 
-	db, _ := postgres.DBConn()
+	db, err := postgres.DBConn()
+	if err != nil {
+		panic(err)
+	}
 
 	e := server.New()
-	e.Pre(middleware.RemoveTrailingSlash())
-	//	e.Use(secure.Headers())
-	//	e.Use(secure.CORS())
 
 	e.Static("/swaggerui", cfg.App.SwaggerUIPath)
 

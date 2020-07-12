@@ -29,7 +29,6 @@ func Authenticate() echo.MiddlewareFunc {
 			err := handler.CheckJWT(c.Response(), c.Request())
 			if err != nil {
 				return c.String(http.StatusUnauthorized, "")
-				panic(err.Error())
 			}
 
 			userContext := c.Request().Context().Value("user").(*jwt.Token)

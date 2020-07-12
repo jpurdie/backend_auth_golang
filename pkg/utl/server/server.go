@@ -8,20 +8,22 @@ import (
 	"time"
 
 	"github.com/go-playground/validator"
-	"github.com/labstack/echo/middleware"
 	"github.com/jpurdie/authapi/pkg/utl/middleware/secure"
+	"github.com/labstack/echo/middleware"
 
 	"github.com/labstack/echo"
 )
 
 // New instantates new Echo server
 func New() *echo.Echo {
+
 	e := echo.New()
-	e.Use(middleware.Logger(), middleware.Recover(),
-		secure.Headers())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost.vitae.com"},
-	}))
+
+	e.Use(middleware.Recover())
+	e.Use(middleware.Logger())
+	e.Pre(middleware.RemoveTrailingSlash())
+	e.Use(secure.Headers())
+	e.Use(secure.CORS())
 
 	e.GET("/", healthCheck)
 	e.Validator = &CustomValidator{V: validator.New()}
@@ -45,18 +47,26 @@ type Config struct {
 
 // Start starts echo server
 func Start(e *echo.Echo, cfg *Config) {
+
+	//t := &tls.Config{}
+
 	s := &http.Server{
 		Addr:         cfg.Port,
 		ReadTimeout:  time.Duration(cfg.ReadTimeoutSeconds) * time.Second,
 		WriteTimeout: time.Duration(cfg.WriteTimeoutSeconds) * time.Second,
 	}
+
 	e.Debug = cfg.Debug
 
 	// Start server
 	go func() {
-		if err := e.StartServer(s); err != nil {
+
+		if err := e.StartTLS(s.Addr, os.Getenv("CERT_LOC"), os.Getenv("KEY_LOC")); err != nil {
 			e.Logger.Info("Shutting down the server")
 		}
+		//if err := e.StartServer(s); err != nil {
+		//	e.Logger.Info("Shutting down the server")
+		//}
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
