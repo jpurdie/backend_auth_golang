@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/labstack/echo"
 	"log"
@@ -9,7 +10,7 @@ import (
 
 // Organization defines database operations for Organization.
 type OrganizationStore interface {
-	ListAccessible(u *authapi.User, includeInactive bool) ([]authapi.Organization, error)
+	ListAccessible(u *authapi.User, includeInactive bool) ([]authapi.OrganizationUser, error)
 	//List() error
 }
 
@@ -37,8 +38,14 @@ var (
 	ErrAuth0Unknown         = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}}
 )
 
+type listAuthorizedRespInner struct {
+	OrgName string       `json:"name"`
+	UUID    uuid.UUID    `json:"uuid"`
+	Role    authapi.Role `json:"role"`
+}
+
 type listAuthorizedResp struct {
-	Organizations []authapi.Organization `json:"orgs"`
+	Orgs []listAuthorizedRespInner `json:"orgs"`
 }
 
 func (rs *OrganizationResource) listAuthorized(c echo.Context) error {
@@ -48,7 +55,7 @@ func (rs *OrganizationResource) listAuthorized(c echo.Context) error {
 		ExternalID: c.Get("sub").(string),
 	}
 
-	organizations, err := rs.Store.ListAccessible(&u, false)
+	organizationUser, err := rs.Store.ListAccessible(&u, false)
 
 	if err != nil {
 		log.Println(err)
@@ -58,10 +65,17 @@ func (rs *OrganizationResource) listAuthorized(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 
 	}
-	resp := listAuthorizedResp{
-		Organizations: organizations,
+	x := listAuthorizedResp{}
+	for _, tempOrgUser := range organizationUser {
+		temp := listAuthorizedRespInner{
+			OrgName: tempOrgUser.Organization.Name,
+			UUID:    tempOrgUser.Organization.UUID,
+			Role:    *tempOrgUser.Role,
+		}
+		x.Orgs = append(x.Orgs, temp)
 	}
-	return c.JSON(http.StatusOK, resp)
+
+	return c.JSON(http.StatusOK, x)
 }
 
 func (rs *OrganizationResource) ping(c echo.Context) error {

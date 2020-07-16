@@ -15,17 +15,21 @@ func NewOrganizationStore(db *pg.DB) *OrganizationStore {
 	}
 }
 
-func (s *OrganizationStore) ListAccessible(u *authapi.User, includeInactive bool) ([]authapi.Organization, error) {
+func (s *OrganizationStore) ListAccessible(u *authapi.User, includeInactive bool) ([]authapi.OrganizationUser, error) {
 	op := "ListAccessible"
-	var companies []authapi.Organization
+	var OrganizationUser []authapi.OrganizationUser
 	inactiveSQL := "organization.active = TRUE"
 	if includeInactive {
 		inactiveSQL = "1=1" //will return inactive and active
 	}
-	err := s.db.Model(&companies).
-		Join("JOIN organization_users AS cu ON cu.organization_id = organization.id").
-		Join("JOIN users AS u ON cu.user_id = u.id").
-		Where("u.external_id = ?", u.ExternalID).
+	err := s.db.Model(&OrganizationUser).
+		Column("organization_user.*").
+		Relation("Organization").
+		Relation("User").
+		Relation("Role").
+		//	Join("JOIN organization_users AS cu ON cu.organization_id = organization.id").
+		//	Join("JOIN users AS u ON cu.user_id = u.id").
+		Where("external_id = ?", u.ExternalID).
 		Where(inactiveSQL).
 		Order("organization.name asc").
 		Select()
@@ -37,5 +41,5 @@ func (s *OrganizationStore) ListAccessible(u *authapi.User, includeInactive bool
 			Err:  err,
 		}
 	}
-	return companies, nil
+	return OrganizationUser, nil
 }
