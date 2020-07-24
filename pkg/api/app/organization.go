@@ -30,14 +30,6 @@ func (rs *OrganizationResource) router(r *echo.Group) {
 	r.GET("", rs.listAuthorized)
 }
 
-var (
-	ErrEmailAlreadyExists   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}}
-	ErrPasswordsNotMatching = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Passwords do not match"}}
-	ErrPasswordNotValid     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}}
-	UnknownError            = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering."}}
-	ErrAuth0Unknown         = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}}
-)
-
 type listAuthorizedRespInner struct {
 	OrgName string       `json:"name"`
 	UUID    uuid.UUID    `json:"uuid"`

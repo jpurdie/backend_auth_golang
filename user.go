@@ -8,15 +8,15 @@ type User struct {
 	LastName         string             `json:"last_name"`
 	Password         string             `json:"-" pg:"-" sql:"-"`
 	Email            string             `json:"email"`
-	Username         string             `json:"username"`
-	Mobile           string             `json:"mobile,omitempty"`
-	Phone            string             `json:"phone,omitempty"`
-	Address          string             `json:"address,omitempty"`
+	Username         string             `json:"-"`
+	Mobile           string             `json:"mobile"`
+	Phone            string             `json:"phone"`
+	Address          string             `json:"address"`
 	Active           bool               `json:"active"`
-	ExternalID       string             `json:"auth0id" pg:",unique"`
-	UUID             uuid.UUID          `json:"uuid" pg:",unique,type:uuid,notnull"`
-	OrganizationID   int                `json:"organization_id" pg:"-" sql:"-"`
-	OrganizationUser []OrganizationUser `json:"-"  pg:",many2many:organization_users"`
+	ExternalID       string             `json:"-" pg:",unique"`
+	UUID             uuid.UUID          `json:"id" pg:",unique,type:uuid,notnull"`
+	OrganizationID   int                `json:"-" pg:"-" sql:"-"`
+	OrganizationUser []OrganizationUser `json:"-"  pg:",many2many:organization_users,joinFK:id""`
 }
 
 // AuthUser represents data stored in JWT token for user

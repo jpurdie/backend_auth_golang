@@ -21,6 +21,7 @@ type API struct {
 	Organizations     *OrganizationResource
 	Invitations       *InvitationResource
 	Authorizations    *AuthorizationResource
+	Users             *UserResource
 }
 
 // NewAPI configures and returns admin application API.
@@ -41,11 +42,15 @@ func NewAPI(db *pg.DB) (*API, error) {
 	authorizationStore := database.NewAuthorizationStore(db)
 	authorization := NewAuthorizationResource(authorizationStore)
 
+	userStore := database.NewUserStore(db)
+	user := NewUserResource(userStore)
+
 	api := &API{
 		Organizations:     organization,
 		AuthOrganizations: authOrganization,
 		AuthInvitations:   authInvitation,
 		Invitations:       invitation,
+		Users:             user,
 		Authorizations:    authorization,
 	}
 	return api, nil
@@ -58,6 +63,7 @@ func (a *API) Router(r *echo.Group) {
 	authInvitations := r.Group("/auth/invitations")
 	a.AuthInvitations.router(authInvitations)
 
+	// Everything after here requires authentication
 	authMiddleware := authMw.Authenticate()
 	r.Use(authMiddleware)
 
@@ -67,7 +73,8 @@ func (a *API) Router(r *echo.Group) {
 	invitations := r.Group("/invitations")
 	a.Invitations.router(invitations)
 
-	// Everything after here requires authentication
+	users := r.Group("/users")
+	a.Users.router(users)
 
 	r.GET("/ping", func(c echo.Context) error {
 		return c.String(http.StatusOK, "pong")

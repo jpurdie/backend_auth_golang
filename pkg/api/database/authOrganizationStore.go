@@ -18,7 +18,6 @@ func NewAuthOrganizationStore(db *pg.DB) *AuthOrganizationStore {
 	}
 }
 
-//
 // Custom errors
 var (
 	ErrCompAlreadyExists  = errors.New("Organization name already exists")

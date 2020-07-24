@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+	"github.com/go-playground/validator"
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	AuthUtil "github.com/jpurdie/authapi/pkg/utl/auth"
@@ -8,6 +10,14 @@ import (
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
+)
+
+var (
+	ErrEmailAlreadyExists   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}}
+	ErrPasswordsNotMatching = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Passwords do not match"}}
+	ErrPasswordNotValid     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}}
+	UnknownError            = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering."}}
+	ErrAuth0Unknown         = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}}
 )
 
 // Organization defines database operations for Organization.
@@ -44,7 +54,25 @@ func (rs *AuthOrganizationResource) createAuthOrganization(c echo.Context) error
 	r := new(createOrgUserReq)
 
 	if err := c.Bind(r); err != nil {
-		return err
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			fmt.Println(err)
+			return err
+		}
+
+		for _, err := range err.(validator.ValidationErrors) {
+
+			fmt.Println(err.Namespace())
+			fmt.Println(err.Field())
+			fmt.Println(err.StructNamespace())
+			fmt.Println(err.StructField())
+			fmt.Println(err.Tag())
+			fmt.Println(err.ActualTag())
+			fmt.Println(err.Kind())
+			fmt.Println(err.Type())
+			fmt.Println(err.Value())
+			fmt.Println(err.Param())
+			fmt.Println()
+		}
 	}
 
 	if r.Password != r.PasswordConfirm {

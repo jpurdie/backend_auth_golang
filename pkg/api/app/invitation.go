@@ -142,7 +142,7 @@ func (rs *InvitationResource) list(c echo.Context) error {
 	o := authapi.Organization{}
 	o.ID, _ = strconv.Atoi(c.Get("orgID").(string))
 
-	Invitations, err := rs.Store.List(&o, false, false)
+	invitations, err := rs.Store.List(&o, false, false)
 
 	if err != nil {
 		log.Println(err)
@@ -152,7 +152,7 @@ func (rs *InvitationResource) list(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
 	resp := listInvitationsResp{
-		Invitations: Invitations,
+		Invitations: invitations,
 	}
 	return c.JSON(http.StatusOK, resp)
 }
