@@ -12,4 +12,5 @@ type OrganizationUser struct {
 	Organization   *Organization `json:"organization"`
 	RoleID         int           `json:"-"`
 	Role           *Role         `json:"-"`
+	Active         bool          `json:"active"`
 }

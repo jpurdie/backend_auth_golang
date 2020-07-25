@@ -100,7 +100,6 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 
 			for _, role := range requiredRoles {
 				if strings.ToLower(role) == strings.ToLower(roleName) {
-
 					c.Set("orgID", orgID)
 					c.Set("roleName", roleName)
 					c.Set("userID", userID)

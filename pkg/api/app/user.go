@@ -28,16 +28,17 @@ func (rs *UserResource) router(r *echo.Group) {
 }
 
 type listUsersResp struct {
-	Users []authapi.User `json:"users"`
+	Users []userResp `json:"users"`
+}
+
+type userResp struct {
+	authapi.User
+	Role authapi.Role `json:"role"`
 }
 
 func (rs *UserResource) list(c echo.Context) error {
 	log.Println("Inside list(first)")
-
-	// TODO: dont ignore the error
-	// userID, _ := strconv.Atoi(c.Get("userID").(string))
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
-
 	o := authapi.Organization{}
 	o.ID = orgID
 
@@ -50,16 +51,31 @@ func (rs *UserResource) list(c echo.Context) error {
 		}
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
-	//TODO get role into response
-	var userResp []authapi.User
-	for _, tempOrgUser := range orgUsers {
-		var tempUser = tempOrgUser.User
-		tempUser.UUID = tempOrgUser.UUID
-		userResp = append(userResp, *tempUser)
 
+	/*
+		loop through all the OrgUsers and convert them into a "flattened" version.
+		I'm not seeing a circumstance when the response should be an object like this:
+		OrgUser { User {	} }
+	*/
+
+	var usersSlice []userResp
+	for _, tempOrgUser := range orgUsers { //
+		if tempOrgUser.Active {
+			var tempUser = userResp{}
+			tempUser.UUID = tempOrgUser.UUID
+			tempUser.FirstName = tempOrgUser.User.FirstName
+			tempUser.LastName = tempOrgUser.User.LastName
+			tempUser.Address = tempOrgUser.User.Address
+			tempUser.Email = tempOrgUser.User.Email
+			tempUser.Mobile = tempOrgUser.User.Mobile
+			tempUser.Phone = tempOrgUser.User.Phone
+			tempUser.Role = *tempOrgUser.Role
+			tempUser.Active = tempOrgUser.Active
+			usersSlice = append(usersSlice, tempUser)
+		}
 	}
 	resp := listUsersResp{
-		Users: userResp,
+		Users: usersSlice,
 	}
 	return c.JSON(http.StatusOK, resp)
 
