@@ -23,6 +23,6 @@ const (
 // Role model
 type Role struct {
 	ID          AccessRole `json:"-"`
-	AccessLevel AccessRole `json:"accessLevel"`
+	AccessLevel AccessRole `json:"-"`
 	Name        string     `json:"name"`
 }

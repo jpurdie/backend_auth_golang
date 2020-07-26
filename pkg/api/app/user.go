@@ -11,6 +11,7 @@ import (
 
 type UserStore interface {
 	List(o *authapi.Organization) ([]authapi.OrganizationUser, error)
+	ListRoles() ([]authapi.Role, error)
 }
 
 type UserResource struct {
@@ -25,6 +26,7 @@ func NewUserResource(store UserStore) *UserResource {
 func (rs *UserResource) router(r *echo.Group) {
 	log.Println("Inside Organization Router")
 	r.GET("", rs.list, authMw.CheckAuthorization([]string{"owner", "admin"}))
+	r.GET("/roles", rs.listRoles, authMw.CheckAuthorization([]string{"owner", "admin"}))
 }
 
 type listUsersResp struct {
@@ -34,6 +36,30 @@ type listUsersResp struct {
 type userResp struct {
 	authapi.User
 	Role authapi.Role `json:"role"`
+}
+
+type roleResp struct {
+	Roles []authapi.Role `json:"roles"`
+}
+
+func (rs *UserResource) listRoles(c echo.Context) error {
+	log.Println("Inside list(first)")
+
+	roles, err := rs.Store.ListRoles()
+
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorCode(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+	}
+
+	rResp := roleResp{}
+	rResp.Roles = roles
+
+	return c.JSON(http.StatusOK, rResp)
+
 }
 
 func (rs *UserResource) list(c echo.Context) error {

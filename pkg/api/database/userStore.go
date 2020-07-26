@@ -16,6 +16,24 @@ func NewUserStore(db *pg.DB) *UserStore {
 	}
 }
 
+func (s *UserStore) ListRoles() ([]authapi.Role, error) {
+	op := "ListRoles"
+	var roles []authapi.Role
+
+	err := s.db.Model(&roles).
+		Select()
+
+	if err != nil {
+		return nil, &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+
+	return roles, nil
+}
+
 func (s *UserStore) List(o *authapi.Organization) ([]authapi.OrganizationUser, error) {
 	op := "List"
 	var orgUsers []authapi.OrganizationUser
