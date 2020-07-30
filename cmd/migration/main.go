@@ -19,12 +19,11 @@ func main() {
 	}
 
 	dbInsert := `
-
-	INSERT INTO public.roles VALUES (500, 500, 'OWNER');
-	INSERT INTO public.roles VALUES (400, 400, 'SUPERUSER');
-	INSERT INTO public.roles VALUES (300, 300, 'ADMIN');
-	INSERT INTO public.roles VALUES (200, 200, 'SUPERVISOR');
-	INSERT INTO public.roles VALUES (100, 100, 'USER');
+	INSERT INTO public.roles VALUES (500, 500, 'OWNER', TRUE);
+	INSERT INTO public.roles VALUES (400, 400, 'SUPERUSER', FALSE);
+	INSERT INTO public.roles VALUES (300, 300, 'ADMIN', TRUE);
+	INSERT INTO public.roles VALUES (200, 200, 'SUPERVISOR', FALSE);
+	INSERT INTO public.roles VALUES (100, 100, 'USER', TRUE);
 
 	CREATE INDEX orgs_uuid on organizations(uuid);
 	CREATE INDEX org_users_uuid on organization_users(uuid);
@@ -32,7 +31,6 @@ func main() {
 	CREATE INDEX users_uuid on users(uuid);
 	CREATE INDEX users_externalID on users(external_id);
 	CREATE INDEX users_email on users(email);
-
 	`
 	var psn = os.Getenv("DATABASE_URL")
 	queries := strings.Split(dbInsert, ";")

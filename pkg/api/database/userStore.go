@@ -16,11 +16,26 @@ func NewUserStore(db *pg.DB) *UserStore {
 	}
 }
 
+func (s *UserStore) Update(ou authapi.OrganizationUser) error {
+	op := "Update"
+	_, err := s.db.Model(&ou).Set("role_id = ?role_id").Where("uuid = ?uuid").Update()
+
+	if err != nil {
+		return &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+	return nil
+}
+
 func (s *UserStore) ListRoles() ([]authapi.Role, error) {
 	op := "ListRoles"
 	var roles []authapi.Role
 
 	err := s.db.Model(&roles).
+		Where("active = ?", true).
 		Select()
 
 	if err != nil {

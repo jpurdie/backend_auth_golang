@@ -1,17 +1,28 @@
 package app
 
 import (
+	"fmt"
+	"github.com/go-playground/validator"
+	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+)
+
+var (
+	ErrRoleNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnprocessableEntity, Message: "Invalid role"}}
+	ErrUserNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusNotFound, Message: "User not found"}}
+	ErrInternal     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}}
 )
 
 type UserStore interface {
 	List(o *authapi.Organization) ([]authapi.OrganizationUser, error)
 	ListRoles() ([]authapi.Role, error)
+	Update(ou authapi.OrganizationUser) error
 }
 
 type UserResource struct {
@@ -27,6 +38,7 @@ func (rs *UserResource) router(r *echo.Group) {
 	log.Println("Inside Organization Router")
 	r.GET("", rs.list, authMw.CheckAuthorization([]string{"owner", "admin"}))
 	r.GET("/roles", rs.listRoles, authMw.CheckAuthorization([]string{"owner", "admin"}))
+	r.PATCH("/:id", rs.patchUser, authMw.CheckAuthorization([]string{"owner", "admin"}))
 }
 
 type listUsersResp struct {
@@ -42,8 +54,66 @@ type roleResp struct {
 	Roles []authapi.Role `json:"roles"`
 }
 
+type patchRequest struct {
+	RoleName *string `json:"role,omitempty"`
+}
+
+func (rs *UserResource) patchUser(c echo.Context) error {
+	log.Println("Inside patchUser()")
+
+	r := new(patchRequest)
+
+	if err := c.Bind(r); err != nil {
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			fmt.Println(err)
+			return err
+		}
+	}
+
+	//Get the url parameter and parse it into UUID
+	orgUserUUID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		log.Println(err)
+		return c.JSON(ErrUserNotFound.Error.CodeInt, ErrUserNotFound)
+	}
+
+	orgUserToBeUpdated := authapi.OrganizationUser{}
+	orgUserToBeUpdated.UUID = orgUserUUID
+
+	if r.RoleName != nil { //checking if the role is being changed
+
+		//TODO Cache this
+		roles, err := rs.Store.ListRoles() // list all the roles in the DB
+		if err != nil {
+			log.Println(err)
+			if errCode := authapi.ErrorCode(err); errCode != "" {
+				return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+			}
+			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+		}
+		roleFound := false // checking the role is a valid type
+		for _, role := range roles {
+			if strings.ToUpper(role.Name) == strings.ToUpper(*r.RoleName) {
+				orgUserToBeUpdated.RoleID = int(role.AccessLevel)
+				roleFound = true
+				break
+			}
+		}
+		if !roleFound {
+			return c.JSON(http.StatusUnprocessableEntity, ErrRoleNotFound)
+		}
+	}
+	//role found if it made it here
+	err = rs.Store.Update(orgUserToBeUpdated)
+	if err != nil {
+		log.Println(err)
+		return c.JSON(ErrInternal.Error.CodeInt, ErrInternal)
+	}
+	return c.NoContent(http.StatusOK)
+}
+
 func (rs *UserResource) listRoles(c echo.Context) error {
-	log.Println("Inside list(first)")
+	log.Println("Inside list()")
 
 	roles, err := rs.Store.ListRoles()
 
