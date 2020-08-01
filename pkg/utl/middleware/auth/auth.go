@@ -82,16 +82,16 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 				//return c.JSON(http.StatusInternalServerError, "")
 			}
 
-			roleName, orgID, userID := "", "", ""
+			roleName, orgID, userID, orgUserID := "", "", "", ""
 
 			err = db.Model((*authapi.Role)(nil)).
-				Column("role.name", "o.id", "u.id").
+				Column("role.name", "o.id", "u.id", "ou.id").
 				Join("JOIN organization_users AS ou ON ou.role_id = role.id").
 				Join("JOIN organizations AS o ON ou.role_id = role.id").
 				Join("JOIN users AS u ON u.id = ou.user_id").
 				Where("o.uuid = ?", orgUUID.String()).
 				Where("u.external_id = ?", c.Get("sub").(string)).
-				Select(&roleName, &orgID, &userID)
+				Select(&roleName, &orgID, &userID, &orgUserID)
 
 			if err != nil {
 				log.Println(err)
@@ -103,6 +103,7 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 					c.Set("orgID", orgID)
 					c.Set("roleName", roleName)
 					c.Set("userID", userID)
+					c.Set("orgUserID", orgUserID)
 					return next(c)
 				}
 			}

@@ -1,8 +1,6 @@
 package app
 
 import (
-	"github.com/google/uuid"
-	"github.com/jpurdie/authapi"
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
@@ -10,7 +8,6 @@ import (
 
 // Organization defines database operations for Organization.
 type OrganizationStore interface {
-	ListAccessible(u *authapi.User, includeInactive bool) ([]authapi.OrganizationUser, error)
 	//List() error
 }
 
@@ -27,47 +24,7 @@ func NewOrganizationResource(store OrganizationStore) *OrganizationResource {
 func (rs *OrganizationResource) router(r *echo.Group) {
 	log.Println("Inside Organization Router")
 	r.GET("/ping", rs.ping)
-	r.GET("", rs.listAuthorized)
-}
-
-type listAuthorizedRespInner struct {
-	OrgName string       `json:"name"`
-	UUID    uuid.UUID    `json:"uuid"`
-	Role    authapi.Role `json:"role"`
-}
-
-type listAuthorizedResp struct {
-	Orgs []listAuthorizedRespInner `json:"orgs"`
-}
-
-func (rs *OrganizationResource) listAuthorized(c echo.Context) error {
-	log.Println("Inside listAuthorized(first)")
-
-	u := authapi.User{
-		ExternalID: c.Get("sub").(string),
-	}
-
-	organizationUser, err := rs.Store.ListAccessible(&u, false)
-
-	if err != nil {
-		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
-			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
-		}
-		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
-
-	}
-	x := listAuthorizedResp{}
-	for _, tempOrgUser := range organizationUser {
-		temp := listAuthorizedRespInner{
-			OrgName: tempOrgUser.Organization.Name,
-			UUID:    tempOrgUser.Organization.UUID,
-			Role:    *tempOrgUser.Role,
-		}
-		x.Orgs = append(x.Orgs, temp)
-	}
-
-	return c.JSON(http.StatusOK, x)
+	//r.GET("", rs.listAuthorized)
 }
 
 func (rs *OrganizationResource) ping(c echo.Context) error {

@@ -23,6 +23,8 @@ type UserStore interface {
 	List(o *authapi.Organization) ([]authapi.OrganizationUser, error)
 	ListRoles() ([]authapi.Role, error)
 	Update(ou authapi.OrganizationUser) error
+	Fetch(ou authapi.OrganizationUser) (authapi.OrganizationUser, error)
+	ListAuthorized(u *authapi.User, includeInactive bool) ([]authapi.OrganizationUser, error)
 }
 
 type UserResource struct {
@@ -35,14 +37,20 @@ func NewUserResource(store UserStore) *UserResource {
 	}
 }
 func (rs *UserResource) router(r *echo.Group) {
-	log.Println("Inside Organization Router")
+	log.Println("Inside User Router")
 	r.GET("", rs.list, authMw.CheckAuthorization([]string{"owner", "admin"}))
+	//r.GET("/:uuid/organizations", rs.listAuthorized, authMw.CheckAuthorization([]string{"owner", "admin", "user"}))
+	r.GET("/:auth0id", rs.fetch, authMw.CheckAuthorization([]string{"owner", "admin", "user"}))
 	r.GET("/roles", rs.listRoles, authMw.CheckAuthorization([]string{"owner", "admin"}))
 	r.PATCH("/:id", rs.patchUser, authMw.CheckAuthorization([]string{"owner", "admin"}))
 }
 
 type listUsersResp struct {
 	Users []userResp `json:"users"`
+}
+
+type fetchUserRes struct {
+	User userResp `json:"user"`
 }
 
 type userResp struct {
@@ -132,8 +140,58 @@ func (rs *UserResource) listRoles(c echo.Context) error {
 
 }
 
+func (rs *UserResource) fetch(c echo.Context) error {
+	log.Println("Inside fetch()")
+
+	externalID, _ := c.Get("auth0id").(string)
+	u := authapi.User{}
+	u.ExternalID = externalID
+
+	//checking org ID is valid UUID
+	orgIdReq := c.QueryParam("org_id")
+	orgUUID, err := uuid.Parse(orgIdReq)
+	if err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, "")
+	}
+	org := authapi.Organization{}
+	org.UUID = orgUUID
+
+	ou := authapi.OrganizationUser{}
+	ou.User = &u
+	ou.Organization = &org
+
+	orgUser, err := rs.Store.Fetch(ou)
+
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorCode(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+	}
+
+	if orgUser.Active {
+		var tempUser = userResp{}
+		tempUser.UUID = orgUser.UUID
+		tempUser.FirstName = orgUser.User.FirstName
+		tempUser.LastName = orgUser.User.LastName
+		tempUser.Address = orgUser.User.Address
+		tempUser.Email = orgUser.User.Email
+		tempUser.Mobile = orgUser.User.Mobile
+		tempUser.Phone = orgUser.User.Phone
+		tempUser.Role = *orgUser.Role
+		tempUser.Active = orgUser.Active
+		resp := fetchUserRes{
+			User: tempUser,
+		}
+		return c.JSON(http.StatusOK, resp)
+	}
+	return c.NoContent(http.StatusNotFound)
+
+}
+
 func (rs *UserResource) list(c echo.Context) error {
-	log.Println("Inside list(first)")
+	log.Println("Inside list()")
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
 	o := authapi.Organization{}
 	o.ID = orgID
@@ -175,4 +233,48 @@ func (rs *UserResource) list(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, resp)
 
+}
+
+type listAuthorizedRespInner struct {
+	OrgName string       `json:"name"`
+	UUID    uuid.UUID    `json:"uuid"`
+	Role    authapi.Role `json:"role"`
+}
+
+type listAuthorizedResp struct {
+	Orgs []listAuthorizedRespInner `json:"orgs"`
+}
+
+func (rs *UserResource) listAuthorized(c echo.Context) error {
+	log.Println("Inside listAuthorized(first)")
+
+	userUUID, err := uuid.Parse(c.Param("uuid"))
+	if err != nil {
+		log.Println(err)
+		return c.JSON(ErrUserNotFound.Error.CodeInt, ErrUserNotFound)
+	}
+
+	u := authapi.User{}
+	u.UUID = userUUID
+
+	organizationUser, err := rs.Store.ListAuthorized(&u, false)
+
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorCode(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+
+	}
+	x := listAuthorizedResp{}
+	for _, tempOrgUser := range organizationUser {
+		temp := listAuthorizedRespInner{
+			OrgName: tempOrgUser.Organization.Name,
+			UUID:    tempOrgUser.Organization.UUID,
+			Role:    *tempOrgUser.Role,
+		}
+		x.Orgs = append(x.Orgs, temp)
+	}
+	return c.JSON(http.StatusOK, x)
 }
