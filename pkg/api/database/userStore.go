@@ -58,7 +58,11 @@ func (s *UserStore) Delete(p authapi.Profile) error {
 func (s *UserStore) Update(p authapi.Profile) error {
 	op := "Update"
 
-	_, err := s.db.Model(&p).Set("role_id = ?role_id").Set("updated_at = NOW()").Where("id = ?id").Update()
+	_, err := s.db.Model(&p).
+		Set("role_id = ?role_id").
+		Set("updated_at = NOW()").
+		Where("id = ?id").
+		Update()
 
 	if err != nil {
 		return &authapi.Error{

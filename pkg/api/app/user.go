@@ -17,6 +17,7 @@ var (
 	ErrRoleNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnprocessableEntity, Message: "Invalid role"}}
 	ErrUserNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusNotFound, Message: "User not found"}}
 	ErrInternal     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}}
+	ErrModifySelf   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnauthorized, Message: "You cannot modify yourself"}}
 )
 
 type UserStore interface {
@@ -70,14 +71,14 @@ type patchRequest struct {
 func (rs *UserResource) delete(c echo.Context) error {
 	log.Println("Inside delete()")
 
-	//Get the url parameter and parse it into UUID
-	userUUID, err := uuid.Parse(c.Param("id"))
+	userUUID, err := uuid.Parse(c.Param("id")) //Get the url parameter and parse it into UUID
 	if err != nil {
 		log.Println(err)
 		return c.JSON(ErrUserNotFound.Error.CodeInt, ErrUserNotFound)
 	}
 	//get org ID in request
-	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
+	orgID, _ := strconv.Atoi(c.Get("orgID").(string))           //getting requesting user's org ID
+	rProfileID, _ := strconv.Atoi(c.Get("rProfileID").(string)) //getting requesting user's profile ID
 
 	tempUser := authapi.User{}
 	tempUser.UUID = userUUID
@@ -85,7 +86,13 @@ func (rs *UserResource) delete(c echo.Context) error {
 	tempOrg.ID = orgID
 
 	profileToBeDeleted, err := rs.Store.FetchProfile(tempUser, tempOrg)
+	if err != nil {
+		return c.NoContent(http.StatusNotFound)
+	}
 
+	if rProfileID == profileToBeDeleted.ID {
+		return c.JSON(ErrModifySelf.Error.CodeInt, ErrModifySelf)
+	}
 	//role found if it made it here
 	err = rs.Store.Delete(profileToBeDeleted)
 	if err != nil {
@@ -116,6 +123,7 @@ func (rs *UserResource) patchUser(c echo.Context) error {
 	}
 	//get org ID in request
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
+	rProfileID, _ := strconv.Atoi(c.Get("rProfileID").(string))
 
 	//userToBeUpdated := authapi.User{}
 	//userToBeUpdated.UUID = orgUserUUID
@@ -128,9 +136,13 @@ func (rs *UserResource) patchUser(c echo.Context) error {
 
 	profileToBeUpdated, err := rs.Store.FetchProfile(tempUser, tempOrg)
 
-	//profileToBeUpdated := authapi.Profile{}
-	//profileToBeUpdated.OrganizationID = orgID
-	//profileToBeUpdated.User = &userToBeUpdated
+	if err != nil {
+		return c.NoContent(http.StatusNotFound)
+	}
+
+	if rProfileID == profileToBeUpdated.ID {
+		return c.JSON(ErrModifySelf.Error.CodeInt, ErrModifySelf)
+	}
 
 	if r.RoleName != nil { //checking if the role is being changed
 		//TODO Cache this
