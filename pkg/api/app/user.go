@@ -22,10 +22,11 @@ var (
 type UserStore interface {
 	List(o *authapi.Organization) ([]authapi.User, error)
 	ListRoles() ([]authapi.Role, error)
-	Update(ou authapi.Profile) error
-	Fetch(ou authapi.User) (authapi.User, error)
+	Update(p authapi.Profile) error
+	Fetch(u authapi.User) (authapi.User, error)
 	ListAuthorized(u *authapi.User, includeInactive bool) ([]authapi.Profile, error)
 	FetchProfile(u authapi.User, o authapi.Organization) (authapi.Profile, error)
+	Delete(p authapi.Profile) error
 }
 
 type UserResource struct {
@@ -43,6 +44,7 @@ func (rs *UserResource) router(r *echo.Group) {
 	r.GET("", rs.list, authMw.CheckAuthorization([]string{"owner", "admin"}))
 	r.GET("/roles", rs.listRoles, authMw.CheckAuthorization([]string{"owner", "admin"}))
 	r.PATCH("/:id", rs.patchUser, authMw.CheckAuthorization([]string{"owner", "admin"}))
+	r.DELETE("/:id", rs.delete, authMw.CheckAuthorization([]string{"owner", "admin"}))
 }
 
 type listUsersResp struct {
@@ -63,6 +65,35 @@ type roleResp struct {
 
 type patchRequest struct {
 	RoleName *string `json:"role,omitempty"`
+}
+
+func (rs *UserResource) delete(c echo.Context) error {
+	log.Println("Inside delete()")
+
+	//Get the url parameter and parse it into UUID
+	userUUID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		log.Println(err)
+		return c.JSON(ErrUserNotFound.Error.CodeInt, ErrUserNotFound)
+	}
+	//get org ID in request
+	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
+
+	tempUser := authapi.User{}
+	tempUser.UUID = userUUID
+	tempOrg := authapi.Organization{}
+	tempOrg.ID = orgID
+
+	profileToBeDeleted, err := rs.Store.FetchProfile(tempUser, tempOrg)
+
+	//role found if it made it here
+	err = rs.Store.Delete(profileToBeDeleted)
+	if err != nil {
+		log.Println(err)
+		return c.JSON(ErrInternal.Error.CodeInt, ErrInternal)
+	}
+	return c.NoContent(http.StatusOK)
+
 }
 
 func (rs *UserResource) patchUser(c echo.Context) error {

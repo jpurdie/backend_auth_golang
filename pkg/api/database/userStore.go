@@ -40,10 +40,25 @@ func (s *UserStore) FetchProfile(u authapi.User, o authapi.Organization) (authap
 	return profile, nil
 }
 
-func (s *UserStore) Update(ou authapi.Profile) error {
+func (s *UserStore) Delete(p authapi.Profile) error {
+	op := "Delete"
+
+	_, err := s.db.Model(&p).Where("id = ?id").Delete()
+
+	if err != nil {
+		return &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+	return nil
+}
+
+func (s *UserStore) Update(p authapi.Profile) error {
 	op := "Update"
 
-	_, err := s.db.Model(&ou).Set("role_id = ?role_id").Where("uuid = ?uuid").Update()
+	_, err := s.db.Model(&p).Set("role_id = ?role_id").Set("updated_at = NOW()").Where("id = ?id").Update()
 
 	if err != nil {
 		return &authapi.Error{
@@ -126,7 +141,9 @@ func (s *UserStore) List(o *authapi.Organization) ([]authapi.User, error) {
 			Select()
 
 		tempUser.Profile = profiles
-		returnUsers = append(returnUsers, tempUser)
+		if profiles != nil {
+			returnUsers = append(returnUsers, tempUser)
+		}
 
 	}
 
