@@ -16,8 +16,33 @@ func NewUserStore(db *pg.DB) *UserStore {
 	}
 }
 
-func (s *UserStore) Update(ou authapi.OrganizationUser) error {
+func (s *UserStore) FetchProfile(u authapi.User, o authapi.Organization) (authapi.Profile, error) {
+	op := "ListRoles"
+	var profile authapi.Profile
+
+	err := s.db.Model(&profile).
+		Join("JOIN users AS u ON profile.user_id = \"u\".id").
+		Join("JOIN organizations AS o ON o.id = profile.organization_id").
+		Where("\"o\".id = ?", o.ID).
+		Where("\"u\".uuid = ?", u.UUID).
+		Where("profile.active = ?", true).
+		Where("o.active = ?", true).
+		Select()
+
+	if err != nil {
+		return authapi.Profile{}, &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+
+	return profile, nil
+}
+
+func (s *UserStore) Update(ou authapi.Profile) error {
 	op := "Update"
+
 	_, err := s.db.Model(&ou).Set("role_id = ?role_id").Where("uuid = ?uuid").Update()
 
 	if err != nil {
@@ -49,46 +74,62 @@ func (s *UserStore) ListRoles() ([]authapi.Role, error) {
 	return roles, nil
 }
 
-//Fetch(ou authapi.OrganizationUser) (authapi.OrganizationUser, error)
-func (s *UserStore) Fetch(ou authapi.OrganizationUser) (authapi.OrganizationUser, error) {
+func (s *UserStore) Fetch(u authapi.User) (authapi.User, error) {
 	op := "Fetch"
-	var orgUser authapi.OrganizationUser
 
-	err := s.db.Model(&orgUser).
-		Column("organization_user.*").
-		Relation("Organization").
-		Relation("User").
-		Relation("Role").
-		Where("organization.uuid = ?", ou.Organization.UUID).
-		Where("user.external_id = ?", ou.User.ExternalID).
-		Where("organization.active = ?", true).
-		Where("organization_user.active = ?", true).
-		Order("organization.name asc").
+	//get user information
+	err := s.db.Model(&u).
+		Where("\"user\".external_id = ?", u.ExternalID).
 		Select()
+
+	var profiles []authapi.Profile
+
+	err = s.db.Model(&profiles).
+		Column("profile.*").
+		Relation("Organization").
+		Relation("Role").
+		Where("\"profile\".user_id = ?", u.ID).
+		Select()
+
 	if err != nil {
-		return authapi.OrganizationUser{}, &authapi.Error{
+		return authapi.User{}, &authapi.Error{
 			Op:   op,
 			Code: authapi.EINTERNAL,
 			Err:  err,
 		}
 	}
-	return orgUser, nil
+	u.Profile = profiles
+
+	return u, nil
 
 }
 
-func (s *UserStore) List(o *authapi.Organization) ([]authapi.OrganizationUser, error) {
+func (s *UserStore) List(o *authapi.Organization) ([]authapi.User, error) {
 	op := "List"
-	var orgUsers []authapi.OrganizationUser
-
-	err := s.db.Model(&orgUsers).
-		Column("organization_user.*").
-		Relation("Organization").
-		Relation("User").
-		Relation("Role").
-		Where("organization.id = ?", o.ID).
-		Where("organization.active = ?", true).
-		Order("organization.name asc").
+	var returnUsers []authapi.User
+	var users []authapi.User
+	err := s.db.Model(&users).
+		Join("JOIN profiles AS p ON p.user_id = \"user\".id").
+		Join("JOIN organizations AS o ON o.id = p.organization_id").
+		Where("\"o\".id = ?", o.ID).
 		Select()
+
+	for _, tempUser := range users {
+		var profiles []authapi.Profile
+
+		err = s.db.Model(&profiles).
+			Column("profile.*").
+			Relation("Organization").
+			Relation("Role").
+			Where("\"profile\".user_id = ?", tempUser.ID).
+			Where("\"organization\".id = ?", o.ID).
+			Select()
+
+		tempUser.Profile = profiles
+		returnUsers = append(returnUsers, tempUser)
+
+	}
+
 	if err != nil {
 		return nil, &authapi.Error{
 			Op:   op,
@@ -97,17 +138,17 @@ func (s *UserStore) List(o *authapi.Organization) ([]authapi.OrganizationUser, e
 		}
 	}
 
-	return orgUsers, nil
+	return returnUsers, nil
 }
-func (s *UserStore) ListAuthorized(u *authapi.User, includeInactive bool) ([]authapi.OrganizationUser, error) {
+func (s *UserStore) ListAuthorized(u *authapi.User, includeInactive bool) ([]authapi.Profile, error) {
 	op := "ListAuthorized"
-	var OrganizationUser []authapi.OrganizationUser
+	var profile []authapi.Profile
 	inactiveSQL := "organization.active = TRUE"
 	if includeInactive {
 		inactiveSQL = "1=1" //will return inactive and active
 	}
-	err := s.db.Model(&OrganizationUser).
-		Column("organization_user.*").
+	err := s.db.Model(&profile).
+		Column("profile.*").
 		Relation("Organization").
 		Relation("User").
 		Relation("Role").
@@ -125,5 +166,5 @@ func (s *UserStore) ListAuthorized(u *authapi.User, includeInactive bool) ([]aut
 			Err:  err,
 		}
 	}
-	return OrganizationUser, nil
+	return profile, nil
 }

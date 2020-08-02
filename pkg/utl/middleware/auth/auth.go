@@ -63,7 +63,7 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 			orgIdReq := c.QueryParam("org_id")
 			orgUUID, err := uuid.Parse(orgIdReq)
 			if err != nil {
-				return c.JSON(http.StatusUnprocessableEntity, "")
+				return c.NoContent(http.StatusUnprocessableEntity)
 			}
 			//made it here. is valid UUID
 
@@ -86,7 +86,7 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 
 			err = db.Model((*authapi.Role)(nil)).
 				Column("role.name", "o.id", "u.id", "ou.id").
-				Join("JOIN organization_users AS ou ON ou.role_id = role.id").
+				Join("JOIN profiles AS ou ON ou.role_id = role.id").
 				Join("JOIN organizations AS o ON ou.role_id = role.id").
 				Join("JOIN users AS u ON u.id = ou.user_id").
 				Where("o.uuid = ?", orgUUID.String()).

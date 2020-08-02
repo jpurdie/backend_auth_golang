@@ -41,7 +41,7 @@ func (is *AuthInvitationStore) View(i authapi.Invitation) (authapi.Invitation, e
 }
 
 // Create creates a new user on database
-func (s *AuthInvitationStore) CreateUser(cu authapi.OrganizationUser, i authapi.Invitation) error {
+func (s *AuthInvitationStore) CreateUser(cu authapi.Profile, i authapi.Invitation) error {
 	op := "Create"
 	//	var organization = new(authapi.Organization)
 

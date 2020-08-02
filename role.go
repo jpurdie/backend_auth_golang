@@ -25,5 +25,5 @@ type Role struct {
 	ID          AccessRole `json:"-"`
 	AccessLevel AccessRole `json:"-"`
 	Name        string     `json:"name"`
-	Active      bool
+	Active      bool       `json:"-"`
 }

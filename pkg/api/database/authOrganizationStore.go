@@ -25,7 +25,7 @@ var (
 )
 
 // Create creates a new user on database
-func (s *AuthOrganizationStore) Create(cu authapi.OrganizationUser) error {
+func (s *AuthOrganizationStore) Create(cu authapi.Profile) error {
 	op := "Create"
 	var organization = new(authapi.Organization)
 

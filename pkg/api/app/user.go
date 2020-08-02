@@ -20,11 +20,12 @@ var (
 )
 
 type UserStore interface {
-	List(o *authapi.Organization) ([]authapi.OrganizationUser, error)
+	List(o *authapi.Organization) ([]authapi.User, error)
 	ListRoles() ([]authapi.Role, error)
-	Update(ou authapi.OrganizationUser) error
-	Fetch(ou authapi.OrganizationUser) (authapi.OrganizationUser, error)
-	ListAuthorized(u *authapi.User, includeInactive bool) ([]authapi.OrganizationUser, error)
+	Update(ou authapi.Profile) error
+	Fetch(ou authapi.User) (authapi.User, error)
+	ListAuthorized(u *authapi.User, includeInactive bool) ([]authapi.Profile, error)
+	FetchProfile(u authapi.User, o authapi.Organization) (authapi.Profile, error)
 }
 
 type UserResource struct {
@@ -38,15 +39,14 @@ func NewUserResource(store UserStore) *UserResource {
 }
 func (rs *UserResource) router(r *echo.Group) {
 	log.Println("Inside User Router")
+	r.GET("/me", rs.fetchMe)
 	r.GET("", rs.list, authMw.CheckAuthorization([]string{"owner", "admin"}))
-	//r.GET("/:uuid/organizations", rs.listAuthorized, authMw.CheckAuthorization([]string{"owner", "admin", "user"}))
-	r.GET("/:auth0id", rs.fetch, authMw.CheckAuthorization([]string{"owner", "admin", "user"}))
 	r.GET("/roles", rs.listRoles, authMw.CheckAuthorization([]string{"owner", "admin"}))
 	r.PATCH("/:id", rs.patchUser, authMw.CheckAuthorization([]string{"owner", "admin"}))
 }
 
 type listUsersResp struct {
-	Users []userResp `json:"users"`
+	Users []authapi.User `json:"users"`
 }
 
 type fetchUserRes struct {
@@ -54,8 +54,7 @@ type fetchUserRes struct {
 }
 
 type userResp struct {
-	authapi.User
-	Role authapi.Role `json:"role"`
+	User authapi.User `json:"user"`
 }
 
 type roleResp struct {
@@ -79,30 +78,43 @@ func (rs *UserResource) patchUser(c echo.Context) error {
 	}
 
 	//Get the url parameter and parse it into UUID
-	orgUserUUID, err := uuid.Parse(c.Param("id"))
+	userUUID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		log.Println(err)
 		return c.JSON(ErrUserNotFound.Error.CodeInt, ErrUserNotFound)
 	}
+	//get org ID in request
+	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
 
-	orgUserToBeUpdated := authapi.OrganizationUser{}
-	orgUserToBeUpdated.UUID = orgUserUUID
+	//userToBeUpdated := authapi.User{}
+	//userToBeUpdated.UUID = orgUserUUID
+	//userToBeUpdated.OrganizationID = orgID
+
+	tempUser := authapi.User{}
+	tempUser.UUID = userUUID
+	tempOrg := authapi.Organization{}
+	tempOrg.ID = orgID
+
+	profileToBeUpdated, err := rs.Store.FetchProfile(tempUser, tempOrg)
+
+	//profileToBeUpdated := authapi.Profile{}
+	//profileToBeUpdated.OrganizationID = orgID
+	//profileToBeUpdated.User = &userToBeUpdated
 
 	if r.RoleName != nil { //checking if the role is being changed
-
 		//TODO Cache this
 		roles, err := rs.Store.ListRoles() // list all the roles in the DB
-		if err != nil {
+		if err != nil {                    //check if there was a problem getting roles
 			log.Println(err)
 			if errCode := authapi.ErrorCode(err); errCode != "" {
 				return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 			}
 			return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
-		}
+		} //no problem getting roles
 		roleFound := false // checking the role is a valid type
 		for _, role := range roles {
 			if strings.ToUpper(role.Name) == strings.ToUpper(*r.RoleName) {
-				orgUserToBeUpdated.RoleID = int(role.AccessLevel)
+				profileToBeUpdated.RoleID = int(role.AccessLevel)
 				roleFound = true
 				break
 			}
@@ -112,7 +124,7 @@ func (rs *UserResource) patchUser(c echo.Context) error {
 		}
 	}
 	//role found if it made it here
-	err = rs.Store.Update(orgUserToBeUpdated)
+	err = rs.Store.Update(profileToBeUpdated)
 	if err != nil {
 		log.Println(err)
 		return c.JSON(ErrInternal.Error.CodeInt, ErrInternal)
@@ -140,27 +152,17 @@ func (rs *UserResource) listRoles(c echo.Context) error {
 
 }
 
-func (rs *UserResource) fetch(c echo.Context) error {
-	log.Println("Inside fetch()")
+func (rs *UserResource) fetchMe(c echo.Context) error {
+	log.Println("Inside fetchMe()")
 
-	externalID, _ := c.Get("auth0id").(string)
+	externalID := c.Get("sub").(string)
 	u := authapi.User{}
 	u.ExternalID = externalID
 
-	//checking org ID is valid UUID
-	orgIdReq := c.QueryParam("org_id")
-	orgUUID, err := uuid.Parse(orgIdReq)
-	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, "")
-	}
-	org := authapi.Organization{}
-	org.UUID = orgUUID
+	//ou := authapi.OrganizationUser{}
+	//ou.User = &u
 
-	ou := authapi.OrganizationUser{}
-	ou.User = &u
-	ou.Organization = &org
-
-	orgUser, err := rs.Store.Fetch(ou)
+	userFromDB, err := rs.Store.Fetch(u)
 
 	if err != nil {
 		log.Println(err)
@@ -170,21 +172,12 @@ func (rs *UserResource) fetch(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
 
-	if orgUser.Active {
+	//organizationUser, err := rs.Store.ListAuthorized(&ou, false)
+
+	if userFromDB.UUID != uuid.Nil {
 		var tempUser = userResp{}
-		tempUser.UUID = orgUser.UUID
-		tempUser.FirstName = orgUser.User.FirstName
-		tempUser.LastName = orgUser.User.LastName
-		tempUser.Address = orgUser.User.Address
-		tempUser.Email = orgUser.User.Email
-		tempUser.Mobile = orgUser.User.Mobile
-		tempUser.Phone = orgUser.User.Phone
-		tempUser.Role = *orgUser.Role
-		tempUser.Active = orgUser.Active
-		resp := fetchUserRes{
-			User: tempUser,
-		}
-		return c.JSON(http.StatusOK, resp)
+		tempUser.User = userFromDB
+		return c.JSON(http.StatusOK, tempUser)
 	}
 	return c.NoContent(http.StatusNotFound)
 
@@ -196,8 +189,7 @@ func (rs *UserResource) list(c echo.Context) error {
 	o := authapi.Organization{}
 	o.ID = orgID
 
-	orgUsers, err := rs.Store.List(&o)
-
+	users, err := rs.Store.List(&o)
 	if err != nil {
 		log.Println(err)
 		if errCode := authapi.ErrorCode(err); errCode != "" {
@@ -205,31 +197,8 @@ func (rs *UserResource) list(c echo.Context) error {
 		}
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
-
-	/*
-		loop through all the OrgUsers and convert them into a "flattened" version.
-		I'm not seeing a circumstance when the response should be an object like this:
-		OrgUser { User {	} }
-	*/
-
-	var usersSlice []userResp
-	for _, tempOrgUser := range orgUsers { //
-		if tempOrgUser.Active {
-			var tempUser = userResp{}
-			tempUser.UUID = tempOrgUser.UUID
-			tempUser.FirstName = tempOrgUser.User.FirstName
-			tempUser.LastName = tempOrgUser.User.LastName
-			tempUser.Address = tempOrgUser.User.Address
-			tempUser.Email = tempOrgUser.User.Email
-			tempUser.Mobile = tempOrgUser.User.Mobile
-			tempUser.Phone = tempOrgUser.User.Phone
-			tempUser.Role = *tempOrgUser.Role
-			tempUser.Active = tempOrgUser.Active
-			usersSlice = append(usersSlice, tempUser)
-		}
-	}
 	resp := listUsersResp{
-		Users: usersSlice,
+		Users: users,
 	}
 	return c.JSON(http.StatusOK, resp)
 

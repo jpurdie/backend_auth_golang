@@ -26,7 +26,7 @@ func main() {
 	INSERT INTO public.roles VALUES (100, 100, 'USER', TRUE);
 
 	CREATE INDEX orgs_uuid on organizations(uuid);
-	CREATE INDEX org_users_uuid on organization_users(uuid);
+	CREATE INDEX profiles_uuid on profiles(uuid);
 	CREATE INDEX roles_uuid on roles(name);
 	CREATE INDEX users_uuid on users(uuid);
 	CREATE INDEX users_externalID on users(external_id);
@@ -43,7 +43,7 @@ func main() {
 	createSchema(db, &authapi.Organization{})
 	createSchema(db, &authapi.Role{})
 	createSchema(db, &authapi.User{})
-	createSchema(db, &authapi.OrganizationUser{})
+	createSchema(db, &authapi.Profile{})
 	createSchema(db, &authapi.Invitation{})
 
 	for _, v := range queries[0 : len(queries)-1] {

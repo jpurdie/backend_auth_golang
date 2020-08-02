@@ -4,19 +4,19 @@ import "github.com/google/uuid"
 
 type User struct {
 	Base
-	FirstName        string             `json:"firstName"`
-	LastName         string             `json:"lastName"`
-	Password         string             `json:"-" pg:"-" sql:"-"`
-	Email            string             `json:"email"`
-	Username         string             `json:"-"`
-	Mobile           string             `json:"mobile"`
-	Phone            string             `json:"phone"`
-	Address          string             `json:"address"`
-	Active           bool               `json:"active"`
-	ExternalID       string             `json:"-" pg:",unique"`
-	UUID             uuid.UUID          `json:"id" pg:",unique,type:uuid,notnull"`
-	OrganizationID   int                `json:"-" pg:"-" sql:"-"`
-	OrganizationUser []OrganizationUser `json:"-"  pg:",many2many:organization_users,joinFK:id""`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Password  string `json:"-" pg:"-" sql:"-"`
+	Email     string `json:"email"`
+	Username  string `json:"-"`
+	Mobile    string `json:"mobile"`
+	Phone     string `json:"phone"`
+	Address   string `json:"address"`
+	//	Active           bool               `json:"active"`
+	ExternalID     string    `json:"-" pg:",unique"`
+	UUID           uuid.UUID `json:"userID" pg:",unique,type:uuid,notnull"`
+	OrganizationID int       `json:"-" pg:"-" sql:"-"`
+	Profile        []Profile `json:"profiles"  pg:",many2many:profiles,joinFK:id""`
 }
 
 // AuthUser represents data stored in JWT token for user

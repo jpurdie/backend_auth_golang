@@ -14,7 +14,7 @@ import (
 // Invitation defines database operations for Invitation.
 type AuthInvitationStore interface {
 	View(invitation authapi.Invitation) (authapi.Invitation, error)
-	CreateUser(authapi.OrganizationUser, authapi.Invitation) error
+	CreateUser(authapi.Profile, authapi.Invitation) error
 }
 
 // Invitation Resource implements account management handler.
@@ -96,12 +96,12 @@ func (rs *AuthInvitationResource) registerUser(c echo.Context) error {
 		FirstName:  r.FirstName,
 		LastName:   r.LastName,
 		ExternalID: "",
-		Active:     true,
-		UUID:       uuid.New(),
+		//Active:     true,
+		UUID: uuid.New(),
 	}
 	log.Println("Inside registerUser()")
 
-	cu := authapi.OrganizationUser{Organization: &organization, User: &u, UUID: uuid.New(), RoleID: 100} //create as "user"
+	cu := authapi.Profile{Organization: &organization, User: &u, UUID: uuid.New(), RoleID: 100, Active: true} //create as "user"
 	externalID, err := auth0.CreateUser(u)
 	log.Println("Inside registerUser()")
 

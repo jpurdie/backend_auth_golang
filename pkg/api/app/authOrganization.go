@@ -22,7 +22,7 @@ var (
 
 // Organization defines database operations for Organization.
 type AuthOrganizationStore interface {
-	Create(authapi.OrganizationUser) error
+	Create(authapi.Profile) error
 }
 
 // Organization Resource implements account management handler.
@@ -90,10 +90,10 @@ func (rs *AuthOrganizationResource) createAuthOrganization(c echo.Context) error
 		FirstName:  r.FirstName,
 		LastName:   r.LastName,
 		ExternalID: "",
-		Active:     true,
-		UUID:       uuid.New(),
+		//Active:     true,
+		UUID: uuid.New(),
 	}
-	cu := authapi.OrganizationUser{Organization: &organization, User: &u, UUID: uuid.New(), RoleID: 500, Active: true}
+	cu := authapi.Profile{Organization: &organization, User: &u, UUID: uuid.New(), RoleID: 500, Active: true}
 	externalID, err := auth0.CreateUser(u)
 
 	if err != nil {
