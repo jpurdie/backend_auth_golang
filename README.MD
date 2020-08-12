@@ -1,4 +1,4 @@
-### Authentication REST API Starter with Auth0 authentication
+### Authentication REST API starter/skeleton/template with Auth0 authentication
 #### Go
 - Echo Framework
 - Auth0
