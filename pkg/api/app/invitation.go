@@ -138,7 +138,6 @@ type listInvitationsResp struct {
 
 func (rs *InvitationResource) list(c echo.Context) error {
 	log.Println("Inside listTokens(first)")
-
 	o := authapi.Organization{}
 	o.ID, _ = strconv.Atoi(c.Get("orgID").(string))
 
