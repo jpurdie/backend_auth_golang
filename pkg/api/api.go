@@ -2,16 +2,13 @@ package api
 
 import (
 	"github.com/jpurdie/authapi/pkg/api/app"
-	"github.com/jpurdie/authapi/pkg/api/public"
 	"github.com/jpurdie/authapi/pkg/utl/config"
 	"github.com/jpurdie/authapi/pkg/utl/postgres"
 	"github.com/jpurdie/authapi/pkg/utl/server"
-	"log"
 )
 
 // Start starts the API service
 func Start(cfg *config.Configuration) error {
-	log.Println("Inside Start()")
 
 	db, err := postgres.DBConn()
 	if err != nil {
@@ -21,11 +18,6 @@ func Start(cfg *config.Configuration) error {
 	e := server.New()
 
 	e.Static("/swaggerui", cfg.App.SwaggerUIPath)
-
-	publicAPI, err := public.NewAPI(db)
-
-	publicG := e.Group("/public")
-	publicAPI.Router(publicG)
 
 	appAPI, err := app.NewAPI(db)
 	if err != nil {

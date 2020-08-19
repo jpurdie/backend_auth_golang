@@ -8,12 +8,12 @@ import (
 	"strings"
 )
 
-type AuthOrganizationStore struct {
+type AuthProfileStore struct {
 	db *pg.DB
 }
 
-func NewAuthOrganizationStore(db *pg.DB) *AuthOrganizationStore {
-	return &AuthOrganizationStore{
+func NewAuthProfileStore(db *pg.DB) *AuthProfileStore {
+	return &AuthProfileStore{
 		db: db,
 	}
 }
@@ -25,7 +25,7 @@ var (
 )
 
 // Create creates a new user on database
-func (s *AuthOrganizationStore) Create(cu authapi.Profile) error {
+func (s *AuthProfileStore) Create(cu authapi.Profile) error {
 	op := "Create"
 	var organization = new(authapi.Organization)
 

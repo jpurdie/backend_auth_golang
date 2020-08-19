@@ -13,13 +13,6 @@ import (
 	"strings"
 )
 
-var (
-	ErrRoleNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnprocessableEntity, Message: "Invalid role"}}
-	ErrUserNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusNotFound, Message: "User not found"}}
-	ErrInternal     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}}
-	ErrModifySelf   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnauthorized, Message: "You cannot modify yourself"}}
-)
-
 type UserStore interface {
 	List(o *authapi.Organization) ([]authapi.User, error)
 	ListRoles() ([]authapi.Role, error)
@@ -40,17 +33,24 @@ func NewUserResource(store UserStore) *UserResource {
 	}
 }
 func (rs *UserResource) router(r *echo.Group) {
-	log.Println("Inside User Router")
 	r.GET("/me", rs.fetchMe)
-	r.GET("", rs.list, authMw.CheckAuthorization([]string{"owner", "admin"}))
-	r.GET("/roles", rs.listRoles, authMw.CheckAuthorization([]string{"owner", "admin"}))
+	r.GET("", rs.list, authMw.CheckAuthorization([]string{"owner", "admin"})) //lists all the users for an organization
+	r.GET("/roles", rs.listRoles, authMw.CheckAuthorization([]string{"owner", "admin", "user"}))
 	r.PATCH("/:id", rs.patchUser, authMw.CheckAuthorization([]string{"owner", "admin"}))
 	r.DELETE("/:id", rs.delete, authMw.CheckAuthorization([]string{"owner", "admin"}))
 }
 
-type listUsersResp struct {
-	Users []authapi.User `json:"users"`
-}
+var (
+	ErrRoleNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnprocessableEntity, Message: "Invalid role"}}
+	ErrUserNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusNotFound, Message: "User not found"}}
+	ErrInternal     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}}
+	ErrModifySelf   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnauthorized, Message: "You cannot modify yourself"}}
+	ErrOneOwner     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnauthorized, Message: "There must be at least one owner"}}
+)
+
+//type listUsersResp struct {
+//	Users []authapi.User `json:"users"`
+//}
 
 type fetchUserRes struct {
 	User userResp `json:"user"`
@@ -60,9 +60,9 @@ type userResp struct {
 	User authapi.User `json:"user"`
 }
 
-type roleResp struct {
-	Roles []authapi.Role `json:"roles"`
-}
+//type roleResp struct {
+//	Roles []authapi.Role `json:"roles"`
+//}
 
 type patchRequest struct {
 	RoleName *string `json:"role,omitempty"`
@@ -125,10 +125,6 @@ func (rs *UserResource) patchUser(c echo.Context) error {
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
 	rProfileID, _ := strconv.Atoi(c.Get("rProfileID").(string))
 
-	//userToBeUpdated := authapi.User{}
-	//userToBeUpdated.UUID = orgUserUUID
-	//userToBeUpdated.OrganizationID = orgID
-
 	tempUser := authapi.User{}
 	tempUser.UUID = userUUID
 	tempOrg := authapi.Organization{}
@@ -176,10 +172,7 @@ func (rs *UserResource) patchUser(c echo.Context) error {
 }
 
 func (rs *UserResource) listRoles(c echo.Context) error {
-	log.Println("Inside list()")
-
 	roles, err := rs.Store.ListRoles()
-
 	if err != nil {
 		log.Println(err)
 		if errCode := authapi.ErrorCode(err); errCode != "" {
@@ -187,23 +180,17 @@ func (rs *UserResource) listRoles(c echo.Context) error {
 		}
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
+	//rResp := roleResp{}
+	//rResp.Roles = roles
 
-	rResp := roleResp{}
-	rResp.Roles = roles
-
-	return c.JSON(http.StatusOK, rResp)
-
+	return c.JSON(http.StatusOK, roles)
 }
 
 func (rs *UserResource) fetchMe(c echo.Context) error {
-	log.Println("Inside fetchMe()")
 
 	externalID := c.Get("sub").(string)
 	u := authapi.User{}
 	u.ExternalID = externalID
-
-	//ou := authapi.OrganizationUser{}
-	//ou.User = &u
 
 	userFromDB, err := rs.Store.Fetch(u)
 
@@ -215,19 +202,17 @@ func (rs *UserResource) fetchMe(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
 
-	//organizationUser, err := rs.Store.ListAuthorized(&ou, false)
-
 	if userFromDB.UUID != uuid.Nil {
 		var tempUser = userResp{}
 		tempUser.User = userFromDB
 		return c.JSON(http.StatusOK, tempUser)
 	}
+
 	return c.NoContent(http.StatusNotFound)
 
 }
 
 func (rs *UserResource) list(c echo.Context) error {
-	log.Println("Inside list()")
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
 	o := authapi.Organization{}
 	o.ID = orgID
@@ -240,10 +225,10 @@ func (rs *UserResource) list(c echo.Context) error {
 		}
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
-	resp := listUsersResp{
-		Users: users,
-	}
-	return c.JSON(http.StatusOK, resp)
+	//resp := listUsersResp{
+	//	Users: users,
+	//}
+	return c.JSON(http.StatusOK, users)
 
 }
 
@@ -258,7 +243,6 @@ type listAuthorizedResp struct {
 }
 
 func (rs *UserResource) listAuthorized(c echo.Context) error {
-	log.Println("Inside listAuthorized(first)")
 
 	userUUID, err := uuid.Parse(c.Param("uuid"))
 	if err != nil {

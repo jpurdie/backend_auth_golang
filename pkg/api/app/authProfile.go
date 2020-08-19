@@ -20,24 +20,22 @@ var (
 	ErrAuth0Unknown         = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}}
 )
 
-// Organization defines database operations for Organization.
-type AuthOrganizationStore interface {
+type AuthProfileStore interface {
 	Create(authapi.Profile) error
 }
 
-// Organization Resource implements account management handler.
-type AuthOrganizationResource struct {
-	Store AuthOrganizationStore
+type AuthProfileResource struct {
+	Store AuthProfileStore
 }
 
-func NewAuthOrganizationResource(store AuthOrganizationStore) *AuthOrganizationResource {
-	return &AuthOrganizationResource{
+func NewAuthProfileResource(store AuthProfileStore) *AuthProfileResource {
+	return &AuthProfileResource{
 		Store: store,
 	}
 }
-func (rs *AuthOrganizationResource) router(r *echo.Group) {
+func (rs *AuthProfileResource) router(r *echo.Group) {
 	log.Println("Inside Organization Router")
-	r.POST("", rs.createAuthOrganization)
+	r.POST("", rs.createAuthProfile)
 }
 
 type createOrgUserReq struct {
@@ -49,8 +47,8 @@ type createOrgUserReq struct {
 	Email            string `json:"email" validate:"required,email"`
 }
 
-func (rs *AuthOrganizationResource) createAuthOrganization(c echo.Context) error {
-	log.Println("Inside CreateAuthOrganization(first)")
+func (rs *AuthProfileResource) createAuthProfile(c echo.Context) error {
+	log.Println("Inside CreateAuthProfile(first)")
 	r := new(createOrgUserReq)
 
 	if err := c.Bind(r); err != nil {

@@ -132,9 +132,9 @@ func (rs *InvitationResource) create(c echo.Context) error {
 	return c.JSON(http.StatusCreated, "")
 }
 
-type listInvitationsResp struct {
-	Invitations []authapi.Invitation `json:"invitations"`
-}
+//type listInvitationsResp struct {
+//	Invitations []authapi.Invitation `json:"invitations"`
+//}
 
 func (rs *InvitationResource) list(c echo.Context) error {
 	log.Println("Inside listTokens(first)")
@@ -150,10 +150,10 @@ func (rs *InvitationResource) list(c echo.Context) error {
 		}
 		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
 	}
-	resp := listInvitationsResp{
-		Invitations: invitations,
-	}
-	return c.JSON(http.StatusOK, resp)
+	//resp := listInvitationsResp{
+	//	Invitations: invitations,
+	//}
+	return c.JSON(http.StatusOK, invitations)
 }
 
 func (rs *InvitationResource) ping(c echo.Context) error {

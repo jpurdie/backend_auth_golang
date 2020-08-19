@@ -16,19 +16,19 @@ const (
 
 // API provides admin application resources and handlers.
 type API struct {
-	AuthOrganizations *AuthOrganizationResource
-	AuthInvitations   *AuthInvitationResource
-	Organizations     *OrganizationResource
-	Invitations       *InvitationResource
-	Authorizations    *AuthorizationResource
-	Users             *UserResource
+	AuthProfiles    *AuthProfileResource
+	AuthInvitations *AuthInvitationResource
+	Organizations   *OrganizationResource
+	Invitations     *InvitationResource
+	Authorizations  *AuthorizationResource
+	Users           *UserResource
 }
 
 // NewAPI configures and returns admin application API.
 func NewAPI(db *pg.DB) (*API, error) {
 
-	authOrganizationStore := database.NewAuthOrganizationStore(db)
-	authOrganization := NewAuthOrganizationResource(authOrganizationStore)
+	authProfileStore := database.NewAuthProfileStore(db)
+	authProfile := NewAuthProfileResource(authProfileStore)
 
 	authInvitationStore := database.NewAuthInvitationStore(db)
 	authInvitation := NewAuthInvitationResource(authInvitationStore)
@@ -46,19 +46,23 @@ func NewAPI(db *pg.DB) (*API, error) {
 	user := NewUserResource(userStore)
 
 	api := &API{
-		Organizations:     organization,
-		AuthOrganizations: authOrganization,
-		AuthInvitations:   authInvitation,
-		Invitations:       invitation,
-		Users:             user,
-		Authorizations:    authorization,
+		Organizations:   organization,
+		AuthProfiles:    authProfile,
+		AuthInvitations: authInvitation,
+		Invitations:     invitation,
+		Users:           user,
+		Authorizations:  authorization,
 	}
 	return api, nil
 }
 func (a *API) Router(r *echo.Group) {
 
-	authOrganizations := r.Group("/auth/organizations")
-	a.AuthOrganizations.router(authOrganizations)
+	r.GET("/unauthping", func(c echo.Context) error {
+		return c.String(http.StatusOK, "unauthpong")
+	})
+
+	authProfiles := r.Group("/auth/organizations")
+	a.AuthProfiles.router(authProfiles)
 
 	authInvitations := r.Group("/auth/invitations")
 	a.AuthInvitations.router(authInvitations)
@@ -76,8 +80,8 @@ func (a *API) Router(r *echo.Group) {
 	users := r.Group("/users")
 	a.Users.router(users)
 
-	r.GET("/ping", func(c echo.Context) error {
-		return c.String(http.StatusOK, "pong")
+	r.GET("/authping", func(c echo.Context) error {
+		return c.String(http.StatusOK, "authpong")
 	}, authMw.CheckAuthorization([]string{"owner", "admin", "user"}))
 
 }
