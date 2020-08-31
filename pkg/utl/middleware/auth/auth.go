@@ -2,10 +2,10 @@ package auth
 
 import (
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-pg/pg/v9"
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	jwtUtil "github.com/jpurdie/authapi/pkg/utl/jwt"
-	"github.com/jpurdie/authapi/pkg/utl/postgres"
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
@@ -54,10 +54,11 @@ func Authenticate() echo.MiddlewareFunc {
 	}
 }
 
-func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
+func CheckAuthorization(db *pg.DB, requiredRoles []string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			op := "CheckAuthorization"
+			log.Println(op)
 
 			//checking org ID is valid UUID
 			orgIdReq := c.QueryParam("org_id")
@@ -68,10 +69,6 @@ func CheckAuthorization(requiredRoles []string) echo.MiddlewareFunc {
 			//made it here. is valid UUID
 
 			log.Println("Received request with " + orgUUID.String())
-
-			db, err := postgres.DBConn()
-			log.Println(db.PoolStats())
-			defer db.Close()
 
 			if err != nil {
 				log.Panicln(&authapi.Error{

@@ -45,7 +45,7 @@ func FetchAccessToken() (string, error) {
 	clientSecret := os.Getenv("AUTH0_CLIENT_SECRET")
 	url := "https://" + domain + "/oauth/token"
 	audience := "https://" + domain + "/api/v2/"
-	payload := strings.NewReader("{\"client_id\":\"" + clientId + "\",\"client_secret\": \"" + clientSecret + "\",\"audience\":\"" + audience + "\",\"grant_type\":\"authorization_code\"}")
+	payload := strings.NewReader("{\"client_id\":\"" + clientId + "\",\"client_secret\": \"" + clientSecret + "\",\"audience\":\"" + audience + "\",\"grant_type\":\"client_credentials\"}")
 
 	req, _ := http.NewRequest("POST", url, payload)
 

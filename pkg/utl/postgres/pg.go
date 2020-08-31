@@ -1,52 +1,50 @@
 package postgres
 
 import (
-	"log"
-	"os"
+	"context"
+	"fmt"
 	"time"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v9"
 	// DB adapter
 	_ "github.com/lib/pq"
 )
 
-type logSQL struct{}
+type dbLogger struct{}
 
-func (l *logSQL) BeforeQuery(e *pg.QueryEvent) {}
+// BeforeQuery hooks before pg queries
+func (d dbLogger) BeforeQuery(c context.Context, q *pg.QueryEvent) (context.Context, error) {
+	return c, nil
+}
 
-func (l *logSQL) AfterQuery(e *pg.QueryEvent) {
-	query, err := e.FormattedQuery()
-	if err != nil {
-		panic(err)
-	}
-	log.Println(query)
+// AfterQuery hooks after pg queries
+func (d dbLogger) AfterQuery(c context.Context, q *pg.QueryEvent) error {
+	query, err := q.FormattedQuery()
+	fmt.Println(query)
+	return err
 }
 
 // New creates new database connection to a postgres database
-func DBConn() (*pg.DB, error) {
-
-	opt, err := pg.ParseURL(os.Getenv("DATABASE_URL"))
+func New(psn string, timeout int, enableLog bool) (*pg.DB, error) {
+	u, err := pg.ParseURL(psn)
 	if err != nil {
-		log.Println(err)
-		panic(err)
-	}
-	opt.PoolSize = 3
-	opt.PoolTimeout = time.Second * 5
-	opt.IdleCheckFrequency = time.Second * 10
-	db := pg.Connect(opt)
-	db = db.WithTimeout(time.Second * time.Duration(5))
-	if err := checkConn(db); err != nil {
-		log.Println(err)
 		return nil, err
 	}
-	if true {
-		db.AddQueryHook(&logSQL{})
+
+	db := pg.Connect(u)
+
+	_, err = db.Exec("SELECT 1")
+	if err != nil {
+		return nil, err
 	}
 
-	return db, err
-}
-func checkConn(db *pg.DB) error {
-	var n int
-	_, err := db.QueryOne(pg.Scan(&n), "SELECT 1")
-	return err
+	if timeout > 0 {
+		db = db.WithTimeout(time.Second * time.Duration(timeout))
+	}
+
+	if enableLog {
+		db.AddQueryHook(dbLogger{})
+	}
+
+	return db, nil
 }

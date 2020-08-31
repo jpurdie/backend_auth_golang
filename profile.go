@@ -1,8 +1,10 @@
 package authapi
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
-// Company represents Organization model
+// Company represents Profile model
 type Profile struct {
 	Base
 	UUID           uuid.UUID     `json:"profileID" pg:",unique,type:uuid,notnull"`
