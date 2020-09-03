@@ -24,26 +24,21 @@ var (
 	ErrPasswordNotValid     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}}
 	ErrEmailAlreadyExists   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}}
 	ErrAuth0Unknown         = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}}
-
 )
 
 type HTTP struct {
 	svc invitation.Service
 }
 
-func NewHTTP(svc invitation.Service, er *echo.Group, db *pg.DB) {
+func NewHTTP(svc invitation.Service, r *echo.Group, db *pg.DB) {
 	h := HTTP{svc}
-	ig := er.Group("/invitations")
+
+	ig := r.Group("/invitations")
 	ig.GET("/:token", h.verifyToken)
+	ig.DELETE("/:token", h.delete, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
 	ig.POST("/users", h.createUser)
-
-	//everything after here requires auth
-	//authMiddleware :=
-	//ig.Use(authMiddleware)
-
 	ig.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
 	ig.POST("", h.create, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
-	ig.DELETE("/:email", h.delete, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
 }
 
 type VerifyTokenResp struct {
@@ -253,19 +248,15 @@ func (h *HTTP) create(c echo.Context) error {
 	return c.JSON(http.StatusCreated, "")
 }
 
-type listInvitationsResp struct {
-	Invitations []authapi.Invitation `json:"invitations"`
-}
-
 func (h *HTTP) delete(c echo.Context) error {
-	if len(c.Param("email")) == 0 {
+	if len(c.Param("token")) == 0 {
 		return c.JSON(http.StatusNotFound, CannotFindInvitationErr)
 	}
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
 
 	i := authapi.Invitation{
 		OrganizationID: orgID,
-		Email:          c.Param("email"),
+		Email:          c.Param("token"),
 	}
 	//delete invite
 	err := h.svc.Delete(c, i)

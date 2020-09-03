@@ -20,9 +20,7 @@ func NewHTTP(svc ping.Service, er *echo.Group) {
 //	er.POST()
 //	pr := er.Group("/unauthping")
 	er.GET("/unauthping", h.createPing)
-	authMiddleware := authMw.Authenticate()
-	er.Use(authMiddleware)
-	er.GET("/authping", h.createPing)
+	er.GET("/authping", h.createPing, authMw.Authenticate())
 
 }
 

@@ -61,12 +61,12 @@ func Start(e *echo.Echo, cfg *Config) {
 	// Start server
 	go func() {
 
-		if err := e.StartTLS(s.Addr, os.Getenv("CERT_LOC"), os.Getenv("KEY_LOC")); err != nil {
-			e.Logger.Info("Shutting down the server")
-		}
-		//if err := e.StartServer(s); err != nil {
+		//if err := e.StartTLS(s.Addr, os.Getenv("CERT_LOC"), os.Getenv("KEY_LOC")); err != nil {
 		//	e.Logger.Info("Shutting down the server")
 		//}
+		if err := e.StartServer(s); err != nil {
+			e.Logger.Info("Shutting down the server")
+		}
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server with

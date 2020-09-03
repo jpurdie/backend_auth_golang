@@ -108,7 +108,7 @@ func (h *HTTP) createOrg(c echo.Context) error {
 
 	u.ExternalID = externalID
 	err = h.svc.Create(c, cu)
-	// err = rs.Store.Create(cu)
+
 	if err != nil {
 
 		log.Println(err)

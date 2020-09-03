@@ -11,8 +11,8 @@ import (
 	pingl "github.com/jpurdie/authapi/pkg/api/ping/logging"
 	pingt "github.com/jpurdie/authapi/pkg/api/ping/transport"
 	"github.com/jpurdie/authapi/pkg/api/profile"
-	pl "github.com/jpurdie/authapi/pkg/api/profile/logging"
-	pt "github.com/jpurdie/authapi/pkg/api/profile/transport"
+	profilel "github.com/jpurdie/authapi/pkg/api/profile/logging"
+	profilet "github.com/jpurdie/authapi/pkg/api/profile/transport"
 	"github.com/jpurdie/authapi/pkg/api/user"
 	userl "github.com/jpurdie/authapi/pkg/api/user/logging"
 	usert "github.com/jpurdie/authapi/pkg/api/user/transport"
@@ -45,14 +45,14 @@ func Start(cfg *config.Configuration) error {
 
 	v1 := e.Group("/api/v1")
 	orgt.NewHTTP(orgl.New(organization.Initialize(db), log), v1)
-	pt.NewHTTP(pl.New(profile.Initialize(db), log), v1)
+	profilet.NewHTTP(profilel.New(profile.Initialize(db), log), v1)
 	invitationt.NewHTTP(invitationl.New(invitation.Initialize(db), log), v1, db)
+	pingt.NewHTTP(pingl.New(ping.Initialize(db), log), v1)
 
 	//everything after here requires auth
 	authMiddleware := authMw.Authenticate()
 	v1.Use(authMiddleware)
 
-	pingt.NewHTTP(pingl.New(ping.Initialize(db), log), v1)
 	usert.NewHTTP(userl.New(user.Initialize(db), log), v1, db)
 
 	server.Start(e, &server.Config{

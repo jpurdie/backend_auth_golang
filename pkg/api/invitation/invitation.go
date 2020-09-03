@@ -7,6 +7,28 @@ import (
 )
 
 func (i Invitation) Create(c echo.Context, invite authapi.Invitation) error {
+	//op := "Create"
+
+
+	/*
+		Questions:
+		1. Would this file be where the business logic goes?
+		2. The application is If I want to check if a user with the email address in the invitation already exists in the database. What would be the best way to do that?
+				Would I create a new function in /pkg/api/invitation/platform/pgsql/invitation.go to check the users table?
+				Am I able to use the FetchProfile function in pkg/api/user/platform/pgsql/user.go?
+	 */
+
+
+	//tempInvite, err := i.idb.FindUserByEmail(i.db, invite.Email, invite.Organization.ID)
+	//if(err != nil){
+	//	return err
+	//}
+	//if(tempInvite.ID > 0){
+	//	return &authapi.Error{
+	//		Op:   op,
+	//		Code: authapi.ECONFLICT,
+	//	}
+	//}
 	return i.idb.Create(i.db, invite)
 }
 
