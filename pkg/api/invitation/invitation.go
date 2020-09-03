@@ -12,10 +12,30 @@ func (i Invitation) Create(c echo.Context, invite authapi.Invitation) error {
 
 	/*
 		Questions:
-		1. Would this file be where the business logic goes?
-		2. The application is If I want to check if a user with the email address in the invitation already exists in the database. What would be the best way to do that?
-				Would I create a new function in /pkg/api/invitation/platform/pgsql/invitation.go to check the users table?
+		1. Would this file/functions be where the business logic goes?
+		2. The application is a multi-tenant application. One user can belong to many organizations, and one organization can have many users.
+			ER diagram: https://imgur.com/a/eD3woNv
+
+			In order to join an existing organization, you need to be invited (Similar to slack).
+			But I want to prevent someone who's already part of the organization from being invited again.
+
+			If I want to check whether a user with the email address in the invitation already exists in the database. What would be the best way to do that?
+
 				Am I able to use the FetchProfile function in pkg/api/user/platform/pgsql/user.go?
+				Would I create a new function in /pkg/api/invitation/platform/pgsql/invitation.go to check the users table? (if we do it this way, it seems like DRY rules would be violated)
+
+				In other languages (in this file) I could just do something like this:
+				User myUser = new User();
+				myUser.email = "foo@bar.com";
+				myUser.findUser();
+
+				if(myUser != null) {
+					return "User already exists. dont create invitation";
+				}
+				//continue on
+
+				But with Golang, things seem to be more isolated and it doesn't appear I can do that.
+
 	 */
 
 
