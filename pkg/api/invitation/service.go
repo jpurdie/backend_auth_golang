@@ -5,8 +5,24 @@ import (
 	"github.com/go-pg/pg/v9/orm"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/invitation/platform/pgsql"
+	"github.com/jpurdie/authapi/pkg/api/user"
 	"github.com/labstack/echo"
 )
+
+type Invitation struct {
+	db   *pg.DB
+	idb  InvitationDB
+	udb user.UserDB
+}
+
+// New creates new organization application service
+func New(db *pg.DB, idb InvitationDB, udb user.UserDB) Invitation {
+	return Invitation{
+		db:   db,
+		idb:  idb,
+		udb:  udb,
+	}
+}
 
 type Service interface {
 	Create(c echo.Context, invite authapi.Invitation) error
@@ -16,22 +32,11 @@ type Service interface {
 	CreateUser(c echo.Context, cu authapi.Profile, i authapi.Invitation) error
 }
 
-// New creates new organization application service
-func New(db *pg.DB, idb InvitationDB) Invitation {
-	return Invitation{
-		db:   db,
-		idb:  idb,
-	}
-}
 // Initialize initalizes profile application service with defaults
 func Initialize(db *pg.DB) Invitation {
-	return New(db, pgsql.Invitation{})
+	return New(db, pgsql.Invitation{},  )
 }
 
-type Invitation struct {
-	db   *pg.DB
-	idb  InvitationDB
-}
 
 type InvitationDB interface {
 	Create(db orm.DB, invite authapi.Invitation) error

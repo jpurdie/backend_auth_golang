@@ -2,14 +2,15 @@ package invitation
 
 import (
 	"github.com/go-pg/pg/v9"
+	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/labstack/echo"
 )
 
 func (i Invitation) Create(c echo.Context, invite authapi.Invitation) error {
-	//op := "Create"
-
-
+	op := "Create"
+tempU:=authapi.User{}
+tempU.ID=1
 	/*
 		Questions:
 		1. Would this file/functions be where the business logic goes?
@@ -38,17 +39,20 @@ func (i Invitation) Create(c echo.Context, invite authapi.Invitation) error {
 
 	 */
 
+	orgU := authapi.Organization{};
+	orgU.UUID, _ = uuid.Parse("a4dd6023-bcdf-422c-8fcb-f9e2726321b6")
 
+	p, err := i.udb.FetchProfile(i.db, tempU, orgU);
 	//tempInvite, err := i.idb.FindUserByEmail(i.db, invite.Email, invite.Organization.ID)
-	//if(err != nil){
-	//	return err
-	//}
-	//if(tempInvite.ID > 0){
-	//	return &authapi.Error{
-	//		Op:   op,
-	//		Code: authapi.ECONFLICT,
-	//	}
-	//}
+	if err != nil {
+		return err
+	}
+	if p.ID > 0 {
+		return &authapi.Error{
+			Op:   op,
+			Code: authapi.ECONFLICT,
+		}
+	}
 	return i.idb.Create(i.db, invite)
 }
 
@@ -69,7 +73,7 @@ func (i Invitation) CreateUser(c echo.Context,  cu authapi.Profile, invite autha
 	err := i.db.RunInTransaction(func (tx *pg.Tx) error{
 		return i.idb.CreateUser(tx, cu, invite)
 	})
-	return err;
+	return err
 }
 
 

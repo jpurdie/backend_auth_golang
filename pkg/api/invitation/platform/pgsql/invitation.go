@@ -8,7 +8,8 @@ import (
 	"time"
 )
 
-type Invitation struct{}
+type Invitation struct{
+}
 
 
 func (i Invitation) FindUserByEmail(db orm.DB, email string, orgID int)  (authapi.Invitation, error) {

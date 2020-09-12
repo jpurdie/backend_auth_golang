@@ -3,7 +3,7 @@ database:
   timeout_seconds: 5
 
 server:
-  port: :8443
+  port: :81
   debug: true
   read_timeout_seconds: 10
   write_timeout_seconds: 5

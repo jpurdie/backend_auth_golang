@@ -34,8 +34,8 @@ func NewHTTP(svc invitation.Service, r *echo.Group, db *pg.DB) {
 	h := HTTP{svc}
 
 	ig := r.Group("/invitations")
-	ig.GET("/:token", h.verifyToken)
-	ig.DELETE("/:token", h.delete, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
+	ig.GET("/validations/:token", h.verifyToken)
+	ig.DELETE("/:email", h.delete, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
 	ig.POST("/users", h.createUser)
 	ig.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
 	ig.POST("", h.create, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
@@ -249,14 +249,14 @@ func (h *HTTP) create(c echo.Context) error {
 }
 
 func (h *HTTP) delete(c echo.Context) error {
-	if len(c.Param("token")) == 0 {
+	if len(c.Param("email")) == 0 {
 		return c.JSON(http.StatusNotFound, CannotFindInvitationErr)
 	}
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
 
 	i := authapi.Invitation{
 		OrganizationID: orgID,
-		Email:          c.Param("token"),
+		Email:          c.Param("email"),
 	}
 	//delete invite
 	err := h.svc.Delete(c, i)

@@ -1,9 +1,6 @@
 package api
 
 import (
-	"github.com/jpurdie/authapi/pkg/api/invitation"
-	invitationl "github.com/jpurdie/authapi/pkg/api/invitation/logging"
-	invitationt "github.com/jpurdie/authapi/pkg/api/invitation/transport"
 	"github.com/jpurdie/authapi/pkg/api/organization"
 	orgl "github.com/jpurdie/authapi/pkg/api/organization/logging"
 	orgt "github.com/jpurdie/authapi/pkg/api/organization/transport"
@@ -45,8 +42,7 @@ func Start(cfg *config.Configuration) error {
 
 	v1 := e.Group("/api/v1")
 	orgt.NewHTTP(orgl.New(organization.Initialize(db), log), v1)
-	profilet.NewHTTP(profilel.New(profile.Initialize(db), log), v1)
-	invitationt.NewHTTP(invitationl.New(invitation.Initialize(db), log), v1, db)
+	profilet.NewHTTP(profilel.New(profile.Initialize(db), log), v1);
 	pingt.NewHTTP(pingl.New(ping.Initialize(db), log), v1)
 
 	//everything after here requires auth
