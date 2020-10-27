@@ -5,25 +5,23 @@ import (
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/invitation"
+	authUtil "github.com/jpurdie/authapi/pkg/utl/Auth"
 	auth0 "github.com/jpurdie/authapi/pkg/utl/Auth0"
-	authUtil "github.com/jpurdie/authapi/pkg/utl/auth"
-	email "github.com/jpurdie/authapi/pkg/utl/mail"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 )
 
 var (
-	ErrInternal = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}}
-	CannotFindInvitationErr = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusNotFound, Message: "Cannot find invitation"}}
-	ErrPasswordsNotMatching = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Passwords do not match"}}
-	ErrPasswordNotValid     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}}
-	ErrEmailAlreadyExists   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}}
-	ErrAuth0Unknown         = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}}
+	ErrInternal = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}
+	CannotFindInvitationErr = authapi.Error{CodeInt: http.StatusNotFound, Message: "Cannot find invitation"}
+	ErrPasswordsNotMatching = authapi.Error{CodeInt: http.StatusConflict, Message: "Passwords do not match"}
+	ErrPasswordNotValid     = authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}
+	ErrEmailAlreadyExists   = authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}
+	ErrAuth0Unknown         = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}
 )
 
 type HTTP struct {
@@ -32,7 +30,6 @@ type HTTP struct {
 
 func NewHTTP(svc invitation.Service, r *echo.Group, db *pg.DB) {
 	h := HTTP{svc}
-
 	ig := r.Group("/invitations")
 	ig.GET("/validations/:token", h.verifyToken)
 	ig.DELETE("/:email", h.delete, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
@@ -89,7 +86,7 @@ func (h *HTTP) createUser(c echo.Context) error {
 	log.Println("Inside registerUser(first)")
 
 	if i.ID == 0 || i.Used || curTime.After(*i.ExpiresAt) { //checking the invitation is not used and not past expiration
-		return c.JSON(http.StatusBadRequest, authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Invitation is expired or used"}})
+		return c.JSON(http.StatusBadRequest, authapi.Error{CodeInt: http.StatusConflict, Message: "Invitation is expired or used"})
 	}
 	log.Println("Inside registerUser()")
 
@@ -117,7 +114,7 @@ func (h *HTTP) createUser(c echo.Context) error {
 
 	if err != nil {
 		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errCode := authapi.ErrorType(err); errCode != "" {
 			if errCode == authapi.ECONFLICT {
 				return c.JSON(http.StatusConflict, ErrEmailAlreadyExists)
 			} else {
@@ -166,7 +163,7 @@ func (h *HTTP) list(c echo.Context) error {
 
 	if err != nil {
 		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errCode := authapi.ErrorType(err); errCode != "" {
 			return c.JSON(http.StatusInternalServerError, ErrInternal)
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
@@ -191,15 +188,7 @@ func (h *HTTP) create(c echo.Context) error {
 	}
 
 	u := authapi.User{}
-
-	numDaysExp, err := strconv.Atoi(os.Getenv("INVITATION_EXPIRATION_DAYS"))
-	if err != nil {
-		numDaysExp = 7 //defaulting to 7 days
-	}
-	now := time.Now()
-	expiresAt := now.AddDate(0, 0, numDaysExp)
-	tokenStr := authUtil.GenerateInviteToken()
-	tokenHash := authUtil.GenerateInviteTokenHash(tokenStr)
+	u.Email = r.Email
 
 	invitorID, _ := strconv.Atoi(c.Get("userID").(string))
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
@@ -207,19 +196,16 @@ func (h *HTTP) create(c echo.Context) error {
 	invite := authapi.Invitation{
 		Email:          r.Email,
 		Invitor:        &u,
-		TokenStr:       tokenStr,
-		ExpiresAt:      &expiresAt,
-		TokenHash:      tokenHash,
 		InvitorID:      invitorID,
 		OrganizationID: orgID,
 	}
 	log.Println("This should be emailed " + invite.TokenStr)
 	log.Println("This should be saved to db " + invite.TokenHash)
 
-	err = h.svc.Delete(c, invite)
+	err := h.svc.Delete(c, invite)
 	if err != nil {
 		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errCode := authapi.ErrorType(err); errCode != "" {
 			return c.JSON(http.StatusInternalServerError, ErrInternal)
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
@@ -228,18 +214,10 @@ func (h *HTTP) create(c echo.Context) error {
 	//save invite
 	err = h.svc.Create(c, invite)
 	if err != nil {
-		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
-			return c.JSON(http.StatusInternalServerError, ErrInternal)
-		}
-		return c.JSON(http.StatusInternalServerError, ErrInternal)
-	}
-
-	//send invite after save
-	err = email.SendInvitationEmail(&invite)
-	if err != nil {
-		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errType := authapi.ErrorType(err); errType != "" {
+			if errType == authapi.ECONFLICT {
+				return c.JSON(http.StatusConflict, ErrEmailAlreadyExists)
+			}
 			return c.JSON(http.StatusInternalServerError, ErrInternal)
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
@@ -262,7 +240,7 @@ func (h *HTTP) delete(c echo.Context) error {
 	err := h.svc.Delete(c, i)
 	if err != nil {
 		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errCode := authapi.ErrorType(err); errCode != "" {
 			return c.JSON(http.StatusInternalServerError, ErrInternal)
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
@@ -275,7 +253,7 @@ func (h *HTTP) verifyToken(c echo.Context) error {
 	tokenPlainText := c.Param("token")
 
 	if len(tokenPlainText) == 0 {
-		return c.JSON(http.StatusUnprocessableEntity, authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusBadRequest, Message: "Missing token"}})
+		return c.JSON(http.StatusUnprocessableEntity, authapi.Error{CodeInt: http.StatusBadRequest, Message: "Missing token"})
 	}
 
 	i := authapi.Invitation{TokenStr: tokenPlainText}
@@ -286,7 +264,7 @@ func (h *HTTP) verifyToken(c echo.Context) error {
 	curTime := time.Now()
 
 	if i.ID == 0 || i.Used || curTime.After(*i.ExpiresAt) { //checking the invitation is not used and not past expiration
-		return c.JSON(http.StatusBadRequest, authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Invitation is expired or used"}})
+		return c.JSON(http.StatusBadRequest, authapi.Error{CodeInt: http.StatusConflict, Message: "Invitation is expired or used"})
 	}
 
 	if err != nil {

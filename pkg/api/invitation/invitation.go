@@ -2,31 +2,68 @@ package invitation
 
 import (
 	"github.com/go-pg/pg/v9"
-	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
+	authUtil "github.com/jpurdie/authapi/pkg/utl/Auth"
+	email "github.com/jpurdie/authapi/pkg/utl/mail"
 	"github.com/labstack/echo"
+	"os"
+	"strconv"
+	"time"
 )
 
 func (i Invitation) Create(c echo.Context, invite authapi.Invitation) error {
 	op := "Create"
-	tempU := authapi.User{}
-	tempU.ID = 1
 
-	orgU := authapi.Organization{};
-	orgU.UUID, _ = uuid.Parse("a4dd6023-bcdf-422c-8fcb-f9e2726321b6")
+	//userID, err := strconv.Atoi(c.Get("userID").(string))
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//orgID, err := strconv.Atoi(c.Get("orgID").(string))
+	//if err != nil {
+	//	return err
+	//}
 
-	p, err := i.udb.FetchProfile(i.db, tempU, orgU);
-//	tempInvite, err := i.idb.FindUserByEmail(i.db, invite.Email, invite.Organization.ID)
+	numDaysExp, err := strconv.Atoi(os.Getenv("INVITATION_EXPIRATION_DAYS"))
+	if err != nil {
+		numDaysExp = 7 //defaulting to 7 days
+	}
+	now := time.Now()
+	expiresAt := now.AddDate(0, 0, numDaysExp)
+	tokenStr := authUtil.GenerateInviteToken()
+	tokenHash := authUtil.GenerateInviteTokenHash(tokenStr)
+	invite.ExpiresAt = &expiresAt
+	invite.TokenHash = tokenHash
+	invite.TokenStr = tokenStr
+
+	/*
+		Checking if the invitation email already exists for that org
+	 */
+	user, err := i.udb.FetchByEmail(i.db, invite.Email)
 	if err != nil {
 		return err
 	}
-	if p.ID > 0 {
-		return &authapi.Error{
-			Op:   op,
-			Code: authapi.ECONFLICT,
+
+	for _, tempProfile := range user.Profile{
+		if tempProfile.Organization.ID == invite.OrganizationID {
+			return &authapi.Error{
+				Op:   op,
+				Code: authapi.ECONFLICT,
+			}// the user exists for that organization
 		}
 	}
-	return i.idb.Create(i.db, invite)
+
+	err = i.idb.Create(i.db, invite)
+	if err != nil {
+		return err
+	}
+
+	err = email.SendInvitationEmail(&invite)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (i Invitation) View(c echo.Context, token string) (authapi.Invitation, error) {

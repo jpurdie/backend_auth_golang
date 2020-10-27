@@ -22,19 +22,18 @@ type HTTP struct {
 func NewHTTP(svc user.Service, er *echo.Group, db *pg.DB) {
 	h := HTTP{svc}
 	ur := er.Group("/users")
-	ur.GET("/me", h.fetchMe)
-	ur.GET("/roles", h.listRoles, authMw.CheckAuthorization(db, []string{"owner", "admin"}))
-	ur.GET("", h.list, authMw.CheckAuthorization(db, []string{"owner", "admin"}))
-	ur.PATCH("/:id", h.patchUser, authMw.CheckAuthorization(db, []string{"owner", "admin"}))
-
+	ur.GET("/me", h.fetchMe, authMw.Authenticate())
+	ur.GET("/roles", h.listRoles, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
+	ur.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
+	ur.PATCH("/:id", h.patchUser, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
 }
 
 var (
-	ErrRoleNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnprocessableEntity, Message: "Invalid role"}}
-	ErrUserNotFound = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusNotFound, Message: "User not found"}}
-	ErrInternal     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}}
-	ErrModifySelf   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnauthorized, Message: "You cannot modify yourself"}}
-	ErrOneOwner     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusUnauthorized, Message: "There must be at least one owner"}}
+	ErrRoleNotFound =  authapi.Error{CodeInt: http.StatusUnprocessableEntity, Message: "Invalid role"}
+	ErrUserNotFound = authapi.Error{CodeInt: http.StatusNotFound, Message: "User not found"}
+	ErrInternal     = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}
+	ErrModifySelf   = authapi.Error{CodeInt: http.StatusUnauthorized, Message: "You cannot modify yourself"}
+	ErrOneOwner     =  authapi.Error{CodeInt: http.StatusUnauthorized, Message: "There must be at least one owner"}
 )
 
 type fetchUserRes struct {
@@ -50,16 +49,13 @@ type patchRequest struct {
 }
 
 func (h *HTTP) fetchMe(c echo.Context) error {
-
 	externalID := c.Get("sub").(string)
-	u := authapi.User{}
-	u.ExternalID = externalID
-
-	userFromDB, err := h.svc.Fetch(c, u)
+	
+	userFromDB, err := h.svc.FetchByExternalID(c, externalID)
 
 	if err != nil {
 		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errCode := authapi.ErrorType(err); errCode != "" {
 			return c.JSON(http.StatusInternalServerError, ErrInternal)
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
@@ -77,7 +73,7 @@ func (h *HTTP) listRoles(c echo.Context) error {
 	roles, err := h.svc.ListRoles(c);
 	if err != nil {
 		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errCode := authapi.ErrorType(err); errCode != "" {
 			return c.JSON(http.StatusInternalServerError, ErrInternal)
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
@@ -94,7 +90,7 @@ func (h *HTTP) list(c echo.Context) error {
 	users, err := h.svc.List(c, orgID)
 	if err != nil {
 		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errCode := authapi.ErrorType(err); errCode != "" {
 			return c.JSON(http.StatusInternalServerError, ErrInternal)
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
@@ -122,25 +118,26 @@ func (h *HTTP)  patchUser(c echo.Context) error {
 	userUUID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		log.Println(err)
-		return c.JSON(ErrUserNotFound.Error.CodeInt, ErrUserNotFound)
+		return c.JSON(http.StatusNotFound, ErrUserNotFound)
 	}
 	//get org ID in request
 	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
-	rProfileID, _ := strconv.Atoi(c.Get("rProfileID").(string))
+	userID, _ := strconv.Atoi(c.Get("userID").(string))
+	profileID, _ := strconv.Atoi(c.Get("profileID").(string))
 
 	tempUser := authapi.User{}
 	tempUser.UUID = userUUID
 	tempOrg := authapi.Organization{}
 	tempOrg.ID = orgID
 
-	profileToBeUpdated, err := h.svc.FetchProfile(c, tempUser, tempOrg)
+	profileToBeUpdated, err := h.svc.FetchProfile(c, userID, orgID)
 
 	if err != nil {
 		return c.NoContent(http.StatusNotFound)
 	}
 
-	if rProfileID == profileToBeUpdated.ID {
-		return c.JSON(ErrModifySelf.Error.CodeInt, ErrModifySelf)
+	if profileID == profileToBeUpdated.ID {
+		return c.JSON(http.StatusUnprocessableEntity, ErrModifySelf)
 	}
 
 	if r.RoleName != nil { //checking if the role is being changed
@@ -148,7 +145,7 @@ func (h *HTTP)  patchUser(c echo.Context) error {
 		roles, err := h.svc.ListRoles(c) // list all the roles in the DB
 		if err != nil {                    //check if there was a problem getting roles
 			log.Println(err)
-			if errCode := authapi.ErrorCode(err); errCode != "" {
+			if errCode := authapi.ErrorType(err); errCode != "" {
 				return c.JSON(http.StatusInternalServerError, ErrInternal)
 			}
 			return c.JSON(http.StatusInternalServerError, ErrInternal)
@@ -169,7 +166,7 @@ func (h *HTTP)  patchUser(c echo.Context) error {
 	err = h.svc.Update(c, profileToBeUpdated)
 	if err != nil {
 		log.Println(err)
-		return c.JSON(ErrInternal.Error.CodeInt, ErrInternal)
+		return c.JSON(http.StatusUnprocessableEntity, ErrInternal)
 	}
 	return c.NoContent(http.StatusOK)
 }

@@ -33,8 +33,8 @@ type Service interface {
 }
 
 // Initialize initalizes profile application service with defaults
-func Initialize(db *pg.DB) Invitation {
-	return New(db, pgsql.Invitation{},  )
+func Initialize(db *pg.DB, usr user.UserDB) Invitation {
+	return New(db, pgsql.Invitation{}, usr)
 }
 
 
@@ -44,5 +44,4 @@ type InvitationDB interface {
 	View(db orm.DB, tokenHash string) (authapi.Invitation, error)
 	List(db orm.DB, o *authapi.Organization, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
 	CreateUser(tx *pg.Tx, cu authapi.Profile, i authapi.Invitation) error
-	FindUserByEmail(db orm.DB, email string, orgID int) (authapi.Invitation, error)
 }

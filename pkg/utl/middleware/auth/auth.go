@@ -100,7 +100,7 @@ func CheckAuthorization(db *pg.DB, requiredRoles []string) echo.MiddlewareFunc {
 					c.Set("orgID", orgID)
 					c.Set("roleName", roleName)
 					c.Set("userID", userID)
-					c.Set("rProfileID", profileID)
+					c.Set("profileID", profileID)
 					return next(c)
 				}
 			}

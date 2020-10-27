@@ -24,18 +24,18 @@ type LogService struct {
 const name = "user"
 
 // Change logging
-func (ls *LogService) Fetch(c echo.Context, u authapi.User) (us authapi.User, err error) {
+func (ls *LogService) FetchByExternalID(c echo.Context, s string) (us authapi.User, err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,
 			name, "Fetch user request", err,
 			map[string]interface{}{
-				"req":  u,
+				"req":  s,
 				"took": time.Since(begin),
 			},
 		)
 	}(time.Now())
-	return ls.Service.Fetch(c, u)
+	return ls.Service.FetchByExternalID(c, s)
 }
 
 func (ls *LogService) ListRoles(c echo.Context) (roles []authapi.Role, err error) {
@@ -79,18 +79,17 @@ func (ls *LogService) Update(c echo.Context, p authapi.Profile) (err error) {
 	return ls.Service.Update(c, p)
 }
 
-
-func (ls *LogService) FetchProfile(c echo.Context, us authapi.User, o authapi.Organization) (p authapi.Profile, err error){
+func (ls *LogService) FetchProfile(c echo.Context, userID int, orgID int) (p authapi.Profile, err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,
 			name, "FetchProfile request", err,
 			map[string]interface{}{
-				"us":  us,
-				"o":  o,
-				"took": time.Since(begin),
+				"userID": userID,
+				"orgID":  orgID,
+				"took":   time.Since(begin),
 			},
 		)
 	}(time.Now())
-	return ls.Service.FetchProfile(c, us, o)
+	return ls.Service.FetchProfile(c, userID, orgID)
 }

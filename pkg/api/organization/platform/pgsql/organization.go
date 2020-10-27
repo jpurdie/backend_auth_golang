@@ -29,6 +29,7 @@ type Organization struct{}
 
 
 // Create creates a new user on database
+
 func (p Organization) Create(tx *pg.Tx, profile authapi.Profile) error {
 	op := "Create"
 	log.Print(op)

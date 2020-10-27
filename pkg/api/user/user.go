@@ -16,12 +16,15 @@ var (
 	ErrInsecurePassword  = echo.NewHTTPError(http.StatusBadRequest, "insecure password")
 )
 
-func (u User) Fetch(c echo.Context, us authapi.User) (authapi.User, error) {
-	return u.udb.Fetch(u.db, us)
+func (u User) FetchByEmail(c echo.Context, email string) (authapi.User, error) {
+	return u.udb.FetchByEmail(u.db, email)
 }
 
 func (u User) ListRoles(c echo.Context) ([]authapi.Role, error) {
 	return u.udb.ListRoles(u.db)
+}
+func (u User) FetchByExternalID(c echo.Context, externalID string) (authapi.User, error){
+	return u.udb.FetchByExternalID(u.db, externalID)
 }
 
 func (u User) List(c echo.Context, orgID int) ([]authapi.User, error) {
@@ -32,7 +35,7 @@ func (u User) Update(c echo.Context, p authapi.Profile) error {
 	return u.udb.Update(u.db, p)
 }
 
-func (u User) FetchProfile(c echo.Context, us authapi.User, o authapi.Organization) (authapi.Profile, error) {
-	return u.udb.FetchProfile(u.db, us, o)
+func (u User) FetchProfile(c echo.Context, userID int, orgID int) (authapi.Profile, error) {
+	return u.udb.FetchProfile(u.db, userID, orgID)
 }
 

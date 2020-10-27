@@ -7,45 +7,36 @@ import (
 
 type User struct{}
 
-//func (u User) FetchProfile(db orm.DB, us authapi.User, o authapi.Organization) (authapi.Profile, error) {
-//	op := "ListRoles"
-//	var profile authapi.Profile
-//
-//	err := db.Model(&profile).
-//		Join("JOIN users AS u ON profile.user_id = \"u\".id").
-//		Join("JOIN organizations AS o ON o.id = profile.organization_id").
-//		Where("\"o\".id = ?", o.ID).
-//		Where("\"u\".uuid = ?", us.UUID).
-//		Where("profile.active = ?", true).
-//		Where("o.active = ?", true).
-//		Select()
-//
-//	if err != nil {
-//		return authapi.Profile{}, &authapi.Error{
-//			Op:   op,
-//			Code: authapi.EINTERNAL,
-//			Err:  err,
-//		}
-//	}
-//
-//	return profile, nil
-//}
-//
-//func (u User) Delete(db orm.DB, p authapi.Profile) error {
-//	op := "Delete"
-//
-//	_, err := db.Model(&p).Where("id = ?id").Delete()
-//
-//	if err != nil {
-//		return &authapi.Error{
-//			Op:   op,
-//			Code: authapi.EINTERNAL,
-//			Err:  err,
-//		}
-//	}
-//	return nil
-//}
-//
+
+func (u User) FetchByExternalID(db orm.DB, externalID string) (authapi.User, error){
+	op := "FetchByExternalID"
+	us := authapi.User{}
+	//get user information
+	err := db.Model(&us).
+		Where("\"user\".external_id = ?", externalID).
+		Select()
+
+	var profiles []authapi.Profile
+
+	err = db.Model(&profiles).
+		Column("profile.*").
+		Relation("Organization").
+		Relation("Role").
+		Where("\"profile\".user_id = ?", us.ID).
+		Select()
+
+	if err != nil {
+		return authapi.User{}, &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+	us.Profile = profiles
+
+	return us, nil
+}
+
 func (u User) Update(db orm.DB, p authapi.Profile) error {
 	op := "Update"
 
@@ -85,12 +76,12 @@ func (u User) ListRoles(db orm.DB) ([]authapi.Role, error) {
 	return roles, nil
 }
 
-func (u User) Fetch(db orm.DB, us authapi.User) (authapi.User, error) {
+func (u User) FetchByEmail(db orm.DB, email string) (authapi.User, error) {
 	op := "Fetch"
-
+	myUser := authapi.User{}
 	//get user information
-	err := db.Model(&us).
-		Where("\"user\".external_id = ?", us.ExternalID).
+	err := db.Model(&myUser).
+		Where("\"user\".email = ?", email).
 		Select()
 
 	var profiles []authapi.Profile
@@ -99,7 +90,7 @@ func (u User) Fetch(db orm.DB, us authapi.User) (authapi.User, error) {
 		Column("profile.*").
 		Relation("Organization").
 		Relation("Role").
-		Where("\"profile\".user_id = ?", us.ID).
+		Where("\"profile\".user_id = ?", myUser.ID).
 		Select()
 
 	if err != nil {
@@ -109,9 +100,9 @@ func (u User) Fetch(db orm.DB, us authapi.User) (authapi.User, error) {
 			Err:  err,
 		}
 	}
-	us.Profile = profiles
+	myUser.Profile = profiles
 
-	return us, nil
+	return myUser, nil
 
 }
 
@@ -182,15 +173,15 @@ func (u User) ListAuthorized(db orm.DB, us *authapi.User, includeInactive bool) 
 	return profile, nil
 }
 
-func (u User) FetchProfile(db orm.DB, us authapi.User, o authapi.Organization) (authapi.Profile, error) {
+func (u User) FetchProfile(db orm.DB, userID int, orgID int) (authapi.Profile, error) {
 	op := "FetchProfile"
 	var profile authapi.Profile
 
 	err := db.Model(&profile).
 		Join("JOIN users AS u ON profile.user_id = \"u\".id").
 		Join("JOIN organizations AS o ON o.id = profile.organization_id").
-		Where("\"o\".id = ?", o.ID).
-		Where("\"u\".uuid = ?", us.UUID).
+		Where("\"o\".ID = ?", orgID).
+		Where("\"u\".ID = ?", userID).
 		Where("profile.active = ?", true).
 		Where("o.active = ?", true).
 		Select()

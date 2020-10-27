@@ -6,7 +6,7 @@ import (
 )
 
 type ErrorResp struct {
-	Error Error `json:"error"`
+	Error []Error `json:"errors"`
 }
 
 /*
@@ -25,7 +25,7 @@ type Error struct {
 	Err error  `json:"-"`
 }
 
-// Application error codes.
+// Application error type.
 const (
 	ECONFLICT = "conflict"  // action cannot be performed
 	EINTERNAL = "internal"  // internal error
@@ -33,13 +33,13 @@ const (
 	ENOTFOUND = "not_found" // entity does not exist
 )
 
-func ErrorCode(err error) string {
+func ErrorType(err error) string {
 	if err == nil {
 		return ""
 	} else if e, ok := err.(*Error); ok && e.Code != "" {
 		return e.Code
 	} else if ok && e.Err != nil {
-		return ErrorCode(e.Err)
+		return ErrorType(e.Err)
 	}
 	return EINTERNAL
 }

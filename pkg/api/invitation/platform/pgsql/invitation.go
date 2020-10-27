@@ -12,30 +12,6 @@ type Invitation struct{
 }
 
 
-func (i Invitation) FindUserByEmail(db orm.DB, email string, orgID int)  (authapi.Invitation, error) {
-	op := "FindByEmail"
-
-	invite := new(authapi.Invitation)
-
-	err := db.Model(invite).
-		Relation("Organization").
-		Where("email = ?", email).
-		Where("organization.active = TRUE").
-		Where("invitation.organization_id = ?", orgID).
-		First()
-
-	if err != nil {
-		log.Println(err)
-		return authapi.Invitation{}, &authapi.Error{
-			Op:   op,
-			Code: authapi.EINTERNAL,
-			Err:  err,
-		}
-	}
-
-	return *invite, nil
-}
-
 func (i Invitation) Create(db orm.DB, invite authapi.Invitation) error {
 	op := "Create"
 

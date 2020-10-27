@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/organization"
+	AuthUtil "github.com/jpurdie/authapi/pkg/utl/Auth"
 	auth0 "github.com/jpurdie/authapi/pkg/utl/Auth0"
-	AuthUtil "github.com/jpurdie/authapi/pkg/utl/auth"
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
@@ -18,18 +18,18 @@ type HTTP struct {
 	svc organization.Service
 }
 
-
 func NewHTTP(svc organization.Service, er *echo.Group) {
 	h := HTTP{svc}
 	pr := er.Group("/organizations")
 	pr.POST("", h.createOrg)
 }
+
 var (
-	ErrEmailAlreadyExists   = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}}
-	ErrPasswordsNotMatching = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Passwords do not match"}}
-	ErrPasswordNotValid     = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}}
-	UnknownError            = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering."}}
-	ErrAuth0Unknown         = authapi.ErrorResp{Error: authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}}
+	ErrEmailAlreadyExists   = authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}
+	ErrPasswordsNotMatching = authapi.Error{CodeInt: http.StatusConflict, Message: "Passwords do not match"}
+	ErrPasswordNotValid     = authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}
+	UnknownError            = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering."}
+	ErrAuth0Unknown         = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}
 )
 
 type createOrgUserReq struct {
@@ -90,7 +90,7 @@ func (h *HTTP) createOrg(c echo.Context) error {
 
 	if err != nil {
 		log.Println(err)
-		if errCode := authapi.ErrorCode(err); errCode != "" {
+		if errCode := authapi.ErrorType(err); errCode != "" {
 			if errCode == authapi.ECONFLICT {
 				return c.JSON(http.StatusConflict, ErrEmailAlreadyExists)
 			} else {

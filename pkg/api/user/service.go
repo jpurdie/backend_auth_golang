@@ -9,14 +9,15 @@ import (
 )
 
 type Service interface {
-	Fetch(echo.Context, authapi.User) (authapi.User, error)
+	FetchByEmail(echo.Context, string) (authapi.User, error)
+	FetchByExternalID(c echo.Context, externalID string) (authapi.User, error)
 	ListRoles(echo.Context) ([]authapi.Role, error)
 	List(c echo.Context, orgID int) ([]authapi.User, error)
 	Update(c echo.Context, p authapi.Profile) error
-	FetchProfile(c echo.Context, u authapi.User, o authapi.Organization) (authapi.Profile, error)
+	FetchProfile(c echo.Context, userID int, orgID int) (authapi.Profile, error)
 }
 
-// New creates new password application service
+// New creates new user application service
 func New(db *pg.DB, pdb UserDB) User {
 	return User{
 		db:  db,
@@ -24,7 +25,7 @@ func New(db *pg.DB, pdb UserDB) User {
 	}
 }
 
-// Initialize initalizes profile application service with defaults
+// Initialize initalizes user  service with defaults
 func Initialize(db *pg.DB) User {
 	return New(db, pgsql.User{})
 }
@@ -37,9 +38,10 @@ type User struct {
 type UserDB interface {
 	List(db orm.DB, orgID int) ([]authapi.User, error)
 	ListRoles(orm.DB) ([]authapi.Role, error)
-	Update(orm.DB,authapi.Profile) error
-	Fetch(orm.DB, authapi.User) (authapi.User, error)
+	Update(orm.DB, authapi.Profile) error
+	FetchByEmail(orm.DB, string) (authapi.User, error)
+	FetchByExternalID(db orm.DB, externalID string) (authapi.User, error)
 	//ListAuthorized(db orm.DB,u *authapi.User, includeInactive bool) ([]authapi.Profile, error)
-	FetchProfile(db orm.DB, u authapi.User, o authapi.Organization) (authapi.Profile, error)
+	FetchProfile(db orm.DB, userID int, orgID int) (authapi.Profile, error)
 	//Delete(db orm.DB, p authapi.Profile) error
 }
