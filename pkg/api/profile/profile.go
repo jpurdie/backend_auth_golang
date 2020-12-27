@@ -1,8 +1,6 @@
 package profile
 
-
 import (
-	"github.com/go-pg/pg/v9"
 	"github.com/jpurdie/authapi"
 	"net/http"
 
@@ -17,8 +15,5 @@ var (
 
 // Change changes user's password
 func (p Profile) Create(c echo.Context, profile authapi.Profile) error {
-	err := p.db.RunInTransaction(func (tx *pg.Tx) error{
-		return p.pdb.Create(tx, profile)
-	})
-	return err;
+	return p.pdb.Create(*p.db, profile)
 }

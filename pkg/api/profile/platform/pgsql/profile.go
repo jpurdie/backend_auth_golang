@@ -2,7 +2,7 @@ package pgsql
 
 import (
 	"errors"
-	"github.com/go-pg/pg/v9"
+	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"log"
 )
@@ -17,42 +17,15 @@ type Profile struct{}
 
 
 // Create creates a new user on database
-func (p Profile) Create(tx *pg.Tx, profile authapi.Profile) error {
+func (p Profile) Create(db sqlx.DB, profile authapi.Profile) error {
 	op := "Create"
-	log.Print(op)
-	//var organization = new(authapi.Organization)
 
-	//count, err := db.Model(organization).Where("lower(name) = ? and deleted_at is null", strings.ToLower(profile.Organization.Name)).Count()
-	//if err != nil {
-	//	return &authapi.Error{
-	//		Op:   op,
-	//		Code: authapi.EINTERNAL,
-	//		Err:  err,
-	//	}
-	//}
-	//if count > 0 {
-	//	return ErrCompAlreadyExists
-	//}
-	//var user = new(authapi.User)
-	//
-	//count, err = db.Model(user).Where("lower(email) = ? and deleted_at is null", strings.ToLower(profile.User.Email)).Count()
-	//
-	//if err != nil {
-	//	return &authapi.Error{
-	//		Op:   op,
-	//		Code: authapi.EINTERNAL,
-	//		Err:  err,
-	//	}
-	//}
-	//if count > 0 {
-	//	return ErrEmailAlreadyExists
-	//}
+	tx, err := db.Beginx()
+	orgID := 0
+	err = tx.QueryRowx("INSERT INTO organizations (\"name\",active,uuid) VALUES ($1, $2, $3) RETURNING id as xID;", profile.Organization.Name, true, profile.Organization.UUID.String()).Scan(&orgID)
+	if err != nil {
 
-
-	tx, err := tx.Begin()
-	trErr := tx.Insert(profile.Organization)
-	if trErr != nil {
-		log.Println(trErr)
+		log.Println(err)
 		tx.Rollback()
 		return &authapi.Error{
 			Op:   op,
@@ -60,10 +33,12 @@ func (p Profile) Create(tx *pg.Tx, profile authapi.Profile) error {
 			Err:  err,
 		}
 	}
-	profile.User.OrganizationID = profile.Organization.ID
-	trErr = tx.Insert(profile.User)
-	if trErr != nil {
-		log.Println(trErr)
+
+	userID := 0
+	queryUser := "INSERT INTO users (\"first_name\", \"last_name\", \"email\", \"external_id\", \"uuid\") VALUES ($1, $2, $3, $4, $5) RETURNING id;"
+	err = tx.QueryRowx(queryUser, profile.User.FirstName, profile.User.LastName, profile.User.Email, profile.User.ExternalID, profile.User.UUID.String()).Scan(&userID)
+	if err != nil {
+		log.Println(err)
 		tx.Rollback()
 		return &authapi.Error{
 			Op:   op,
@@ -71,11 +46,12 @@ func (p Profile) Create(tx *pg.Tx, profile authapi.Profile) error {
 			Err:  err,
 		}
 	}
-	profile.UserID = profile.User.ID
-	profile.OrganizationID = profile.Organization.ID
-	trErr = tx.Insert(&profile)
-	if trErr != nil {
-		log.Println(trErr)
+	profileID := 0
+
+	queryProfile := "INSERT INTO profiles (\"uuid\",\"user_id\", \"organization_id\", \"role_id\", \"active\") VALUES ($1, $2, $3, $4, $5) RETURNING id"
+	err = tx.QueryRowx(queryProfile, profile.UUID, userID, orgID, profile.RoleID, true).Scan(&profileID)
+	if err != nil {
+		log.Println(err)
 		tx.Rollback()
 		return &authapi.Error{
 			Op:   op,
@@ -83,11 +59,12 @@ func (p Profile) Create(tx *pg.Tx, profile authapi.Profile) error {
 			Err:  err,
 		}
 	}
-	trErr = tx.Commit()
-	if trErr != nil {
+
+	err = tx.Commit()
+	if err != nil {
 		log.Println("There was a transaction error")
-		log.Println(trErr)
 		tx.Rollback()
+		log.Println(err)
 		return &authapi.Error{
 			Op:   op,
 			Code: authapi.EINTERNAL,

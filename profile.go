@@ -7,12 +7,12 @@ import (
 // Company represents Profile model
 type Profile struct {
 	Base
-	UUID           uuid.UUID     `json:"profileID" pg:",unique,type:uuid,notnull"`
-	UserID         int           `json:"-" pg:",notnull"`
+	UUID           uuid.UUID     `json:"profileID" db:"uuid"`
+	UserID         int           `json:"-" db:"user_id"`
 	User           *User         `json:"-"`
-	OrganizationID int           `json:"-" pg:",notnull"`
+	OrganizationID int           `json:"-" db:"organization_id"`
 	Organization   *Organization `json:"organization"`
-	RoleID         int           `json:"-" pg:",notnull"`
+	RoleID         int           `json:"-" db:"role_id"`
 	Role           *Role         `json:"role"`
-	Active         bool          `json:"-" pg:",notnull"`
+	Active         bool          `json:"-" db:"active"`
 }

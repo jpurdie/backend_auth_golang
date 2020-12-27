@@ -3,11 +3,9 @@ package main
 import (
 	"flag"
 	"github.com/joho/godotenv"
-	"log"
-
 	"github.com/jpurdie/authapi/pkg/api"
-
 	"github.com/jpurdie/authapi/pkg/utl/config"
+	"log"
 )
 
 func main() {

@@ -1,22 +1,21 @@
 package transport
 
 import (
-	"github.com/go-pg/pg/v9"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/invitation"
-	authUtil "github.com/jpurdie/authapi/pkg/utl/Auth"
 	auth0 "github.com/jpurdie/authapi/pkg/utl/Auth0"
+	authUtil "github.com/jpurdie/authapi/pkg/utl/auth"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 )
 
 var (
-	ErrInternal = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}
+	ErrInternal             = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}
 	CannotFindInvitationErr = authapi.Error{CodeInt: http.StatusNotFound, Message: "Cannot find invitation"}
 	ErrPasswordsNotMatching = authapi.Error{CodeInt: http.StatusConflict, Message: "Passwords do not match"}
 	ErrPasswordNotValid     = authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}
@@ -28,18 +27,14 @@ type HTTP struct {
 	svc invitation.Service
 }
 
-func NewHTTP(svc invitation.Service, r *echo.Group, db *pg.DB) {
+func NewHTTP(svc invitation.Service, r *echo.Group, db *sqlx.DB) {
 	h := HTTP{svc}
 	ig := r.Group("/invitations")
 	ig.GET("/validations/:token", h.verifyToken)
-	ig.DELETE("/:email", h.delete, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
+	ig.DELETE("/:email", h.delete, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
 	ig.POST("/users", h.createUser)
-	ig.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
-	ig.POST("", h.create, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
-}
-
-type VerifyTokenResp struct {
-	Invitation authapi.Invitation `json:"invitation"`
+	ig.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
+	ig.POST("", h.create, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
 }
 
 type createUserReq struct {
@@ -51,7 +46,6 @@ type createUserReq struct {
 	URLToken        string `json:"urlToken" validate:"required"`
 }
 
-
 func (h *HTTP) createUser(c echo.Context) error {
 	log.Println("Inside registerUser(first)")
 	r := new(createUserReq)
@@ -61,19 +55,12 @@ func (h *HTTP) createUser(c echo.Context) error {
 	if r.Password != r.PasswordConfirm {
 		return c.JSON(http.StatusBadRequest, ErrPasswordsNotMatching)
 	}
-	log.Println("Inside registerUser()")
 
 	if !authUtil.VerifyPassword(r.Password) {
 		return c.JSON(http.StatusBadRequest, ErrPasswordNotValid)
 	}
-	log.Println("Inside registerUser()")
 
-	i := authapi.Invitation{TokenStr: r.URLToken}
-	log.Println("Inside registerUser()")
-
-	tokenHash := authUtil.GenerateInviteTokenHash(i.TokenStr)
-	i.TokenHash = tokenHash
-	i, err := h.svc.View(c, tokenHash)
+	i, err := h.svc.View(c, r.URLToken)
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, ErrInternal)
 	}
@@ -156,11 +143,8 @@ func (h *HTTP) createUser(c echo.Context) error {
 }
 
 func (h *HTTP) list(c echo.Context) error {
-	o := authapi.Organization{}
-	o.ID, _ = strconv.Atoi(c.Get("orgID").(string))
-
-	invitations, err := h.svc.List(c, &o, false, false)
-
+	oID := c.Get("orgID").(uint)
+	invitations, err := h.svc.List(c, oID, false, false)
 	if err != nil {
 		log.Println(err)
 		if errCode := authapi.ErrorType(err); errCode != "" {
@@ -168,9 +152,6 @@ func (h *HTTP) list(c echo.Context) error {
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
 	}
-	//resp := listInvitationsResp{
-	//	Invitations: invitations,
-	//}
 	return c.JSON(http.StatusOK, invitations)
 }
 
@@ -190,8 +171,8 @@ func (h *HTTP) create(c echo.Context) error {
 	u := authapi.User{}
 	u.Email = r.Email
 
-	invitorID, _ := strconv.Atoi(c.Get("userID").(string))
-	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
+	invitorID := c.Get("userID").(uint)
+	orgID := c.Get("orgID").(uint)
 
 	invite := authapi.Invitation{
 		Email:          r.Email,
@@ -199,20 +180,8 @@ func (h *HTTP) create(c echo.Context) error {
 		InvitorID:      invitorID,
 		OrganizationID: orgID,
 	}
-	log.Println("This should be emailed " + invite.TokenStr)
-	log.Println("This should be saved to db " + invite.TokenHash)
-
-	err := h.svc.Delete(c, invite)
-	if err != nil {
-		log.Println(err)
-		if errCode := authapi.ErrorType(err); errCode != "" {
-			return c.JSON(http.StatusInternalServerError, ErrInternal)
-		}
-		return c.JSON(http.StatusInternalServerError, ErrInternal)
-	}
-
 	//save invite
-	err = h.svc.Create(c, invite)
+	err := h.svc.Create(c, invite)
 	if err != nil {
 		if errType := authapi.ErrorType(err); errType != "" {
 			if errType == authapi.ECONFLICT {
@@ -230,14 +199,11 @@ func (h *HTTP) delete(c echo.Context) error {
 	if len(c.Param("email")) == 0 {
 		return c.JSON(http.StatusNotFound, CannotFindInvitationErr)
 	}
-	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
 
-	i := authapi.Invitation{
-		OrganizationID: orgID,
-		Email:          c.Param("email"),
-	}
+	oID := c.Get("orgID").(uint)
+
 	//delete invite
-	err := h.svc.Delete(c, i)
+	err := h.svc.Delete(c, c.Param("email"), oID)
 	if err != nil {
 		log.Println(err)
 		if errCode := authapi.ErrorType(err); errCode != "" {
@@ -248,6 +214,10 @@ func (h *HTTP) delete(c echo.Context) error {
 	return c.JSON(http.StatusOK, "")
 }
 
+type VerifyTokenResp struct {
+	Invitation authapi.Invitation `json:"invitation"`
+}
+
 func (h *HTTP) verifyToken(c echo.Context) error {
 	log.Println("Inside verifyToken(first)")
 	tokenPlainText := c.Param("token")
@@ -256,11 +226,7 @@ func (h *HTTP) verifyToken(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, authapi.Error{CodeInt: http.StatusBadRequest, Message: "Missing token"})
 	}
 
-	i := authapi.Invitation{TokenStr: tokenPlainText}
-
-	tokenHash := authUtil.GenerateInviteTokenHash(i.TokenStr)
-	i.TokenHash = tokenHash
-	i, err := h.svc.View(c, tokenHash)
+	i, err := h.svc.View(c, tokenPlainText)
 	curTime := time.Now()
 
 	if i.ID == 0 || i.Used || curTime.After(*i.ExpiresAt) { //checking the invitation is not used and not past expiration

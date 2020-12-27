@@ -1,8 +1,7 @@
 package invitation
 
 import (
-	"github.com/go-pg/pg/v9"
-	"github.com/go-pg/pg/v9/orm"
+	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/invitation/platform/pgsql"
 	"github.com/jpurdie/authapi/pkg/api/user"
@@ -10,38 +9,38 @@ import (
 )
 
 type Invitation struct {
-	db   *pg.DB
-	idb  InvitationDB
+	db  *sqlx.DB
+	idb InvitationDB
 	udb user.UserDB
 }
 
 // New creates new organization application service
-func New(db *pg.DB, idb InvitationDB, udb user.UserDB) Invitation {
+func New(db *sqlx.DB, idb InvitationDB, udb user.UserDB) Invitation {
 	return Invitation{
-		db:   db,
-		idb:  idb,
-		udb:  udb,
+		db:  db,
+		idb: idb,
+		udb: udb,
 	}
 }
 
 type Service interface {
 	Create(c echo.Context, invite authapi.Invitation) error
-	List(c echo.Context, o *authapi.Organization, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
-	Delete(c echo.Context, invite authapi.Invitation) error
-	View(c echo.Context, tokenHash string) (authapi.Invitation, error)
+	List(c echo.Context, orgID uint, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
+	Delete(c echo.Context, email string, orgID uint) error
+	View(c echo.Context, tokenPlainTextString string) (authapi.Invitation, error)
 	CreateUser(c echo.Context, cu authapi.Profile, i authapi.Invitation) error
 }
 
 // Initialize initalizes profile application service with defaults
-func Initialize(db *pg.DB, usr user.UserDB) Invitation {
-	return New(db, pgsql.Invitation{}, usr)
+func Initialize(dbx *sqlx.DB, usr user.UserDB) Invitation {
+	return New(dbx, pgsql.Invitation{}, usr)
 }
 
-
 type InvitationDB interface {
-	Create(db orm.DB, invite authapi.Invitation) error
-	Delete(db orm.DB, invite authapi.Invitation) error
-	View(db orm.DB, tokenHash string) (authapi.Invitation, error)
-	List(db orm.DB, o *authapi.Organization, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
-	CreateUser(tx *pg.Tx, cu authapi.Profile, i authapi.Invitation) error
+	Create(dbx sqlx.DB, invite authapi.Invitation) error
+	Delete(dbx sqlx.DB, email string, orgID uint) error
+	ViewByEmail(dbx sqlx.DB, email string, orgID uint) (authapi.Invitation, error)
+	View(dbx sqlx.DB, tokenPlainTextString string) (authapi.Invitation, error)
+	List(dbx sqlx.DB, orgID uint, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
+	CreateUser(dbx sqlx.DB, cu authapi.Profile, i authapi.Invitation) error
 }

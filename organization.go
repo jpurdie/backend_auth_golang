@@ -6,8 +6,8 @@ import (
 
 type Organization struct {
 	Base
-	Name    string    `json:"name"`
-	Active  bool      `json:"active"`
+	Name    string    `json:"name"  db:"name"`
+	Active  bool      `json:"active"  db:"active"`
 	Profile []Profile `json:"-" pg:",many2many:profiles"`
-	UUID    uuid.UUID `json:"organizationID" pg:",unique,type:uuid,notnull"`
+	UUID    uuid.UUID `json:"organizationID"  db:"uuid"`
 }

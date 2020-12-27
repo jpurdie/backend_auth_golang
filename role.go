@@ -22,8 +22,8 @@ const (
 
 // Role model
 type Role struct {
-	ID          AccessRole `json:"-"`
-	AccessLevel AccessRole `json:"-"`
-	Name        string     `json:"name"`
-	Active      bool       `json:"-"`
+	ID          AccessRole `json:"-" db:"id"`
+	AccessLevel AccessRole `json:"-" db:"access_level"`
+	Name        string     `json:"name"  db:"name"`
+	Active      bool       `json:"-"  db:"active"`
 }

@@ -1,39 +1,42 @@
 package transport
 
 import (
-	"github.com/go-pg/pg/v9"
+	"fmt"
+	"github.com/go-playground/validator"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/user"
-	"github.com/labstack/echo"
+	auth0 "github.com/jpurdie/authapi/pkg/utl/Auth0"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
-	"strings"
-	"github.com/go-playground/validator"
-	"fmt"
+	"github.com/labstack/echo"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type HTTP struct {
 	svc user.Service
 }
 
-func NewHTTP(svc user.Service, er *echo.Group, db *pg.DB) {
+func NewHTTP(svc user.Service, er *echo.Group, db *sqlx.DB) {
 	h := HTTP{svc}
 	ur := er.Group("/users")
 	ur.GET("/me", h.fetchMe, authMw.Authenticate())
-	ur.GET("/roles", h.listRoles, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
-	ur.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
-	ur.PATCH("/:id", h.patchUser, authMw.Authenticate(), authMw.CheckAuthorization(db, []string{"owner", "admin"}))
+	ur.GET("/roles", h.listRoles, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
+	ur.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
+	ur.PATCH("/:id", h.patchUser, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
+	ur.POST("/validationemails", h.sendValidationEmail, authMw.Authenticate())
 }
 
 var (
-	ErrRoleNotFound =  authapi.Error{CodeInt: http.StatusUnprocessableEntity, Message: "Invalid role"}
+	ErrRoleNotFound = authapi.Error{CodeInt: http.StatusUnprocessableEntity, Message: "Invalid role"}
 	ErrUserNotFound = authapi.Error{CodeInt: http.StatusNotFound, Message: "User not found"}
 	ErrInternal     = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem"}
 	ErrModifySelf   = authapi.Error{CodeInt: http.StatusUnauthorized, Message: "You cannot modify yourself"}
-	ErrOneOwner     =  authapi.Error{CodeInt: http.StatusUnauthorized, Message: "There must be at least one owner"}
+	ErrOneOwner     = authapi.Error{CodeInt: http.StatusUnauthorized, Message: "There must be at least one owner"}
+	ErrAuth0Unknown = authapi.Error{CodeInt: http.StatusBadRequest, Message: "There was a problem with the auth provider."}
 )
 
 type fetchUserRes struct {
@@ -48,11 +51,21 @@ type patchRequest struct {
 	RoleName *string `json:"role,omitempty"`
 }
 
+func (h *HTTP) sendValidationEmail(c echo.Context) error {
+	externalID := c.Get("sub").(string)
+	u := authapi.User{}
+	u.ExternalID = externalID
+	err := auth0.SendVerificationEmail(u)
+	if err != nil {
+		log.Println(err)
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+	}
+	return c.NoContent(http.StatusOK)
+}
+
 func (h *HTTP) fetchMe(c echo.Context) error {
 	externalID := c.Get("sub").(string)
-	
 	userFromDB, err := h.svc.FetchByExternalID(c, externalID)
-
 	if err != nil {
 		log.Println(err)
 		if errCode := authapi.ErrorType(err); errCode != "" {
@@ -68,9 +81,8 @@ func (h *HTTP) fetchMe(c echo.Context) error {
 	return c.NoContent(http.StatusNotFound)
 }
 
-
 func (h *HTTP) listRoles(c echo.Context) error {
-	roles, err := h.svc.ListRoles(c);
+	roles, err := h.svc.ListRoles(c)
 	if err != nil {
 		log.Println(err)
 		if errCode := authapi.ErrorType(err); errCode != "" {
@@ -78,14 +90,11 @@ func (h *HTTP) listRoles(c echo.Context) error {
 		}
 		return c.JSON(http.StatusInternalServerError, ErrInternal)
 	}
-	//rResp := roleResp{}
-	//rResp.Roles = roles
-
 	return c.JSON(http.StatusOK, roles)
 }
 
 func (h *HTTP) list(c echo.Context) error {
-	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
+	orgID := c.Get("orgID").(uint)
 
 	users, err := h.svc.List(c, orgID)
 	if err != nil {
@@ -102,7 +111,7 @@ func (h *HTTP) list(c echo.Context) error {
 
 }
 
-func (h *HTTP)  patchUser(c echo.Context) error {
+func (h *HTTP) patchUser(c echo.Context) error {
 	log.Println("Inside patchUser()")
 
 	r := new(patchRequest)
@@ -143,7 +152,7 @@ func (h *HTTP)  patchUser(c echo.Context) error {
 	if r.RoleName != nil { //checking if the role is being changed
 		//TODO Cache this
 		roles, err := h.svc.ListRoles(c) // list all the roles in the DB
-		if err != nil {                    //check if there was a problem getting roles
+		if err != nil {                  //check if there was a problem getting roles
 			log.Println(err)
 			if errCode := authapi.ErrorType(err); errCode != "" {
 				return c.JSON(http.StatusInternalServerError, ErrInternal)

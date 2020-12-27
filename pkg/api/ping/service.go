@@ -1,11 +1,10 @@
 package ping
 
 import (
-	"github.com/go-pg/pg/v9"
-	"github.com/go-pg/pg/v9/orm"
+	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
-	"github.com/labstack/echo"
 	"github.com/jpurdie/authapi/pkg/api/ping/platform/pgsql"
+	"github.com/labstack/echo"
 )
 
 type Service interface {
@@ -13,23 +12,23 @@ type Service interface {
 }
 
 // New creates new password application service
-func New(db *pg.DB, pdb PingDB) Ping {
+func New(db *sqlx.DB, pdb PingDB) Ping {
 	return Ping{
 		db:   db,
 		pdb:  pdb,
 	}
 }
 
-func Initialize(db *pg.DB) Ping {
+func Initialize(db *sqlx.DB) Ping {
 	return New(db, pgsql.Ping{})
 }
 
 type Ping struct {
-	db   *pg.DB
+	db   *sqlx.DB
 	pdb  PingDB
 }
 
 type PingDB interface {
-	Create(orm.DB, authapi.Ping) error
+	Create(sqlx.DB, authapi.Ping) error
 }
 

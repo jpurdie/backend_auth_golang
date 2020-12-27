@@ -1,7 +1,7 @@
 package organization
 
 import (
-	"github.com/go-pg/pg/v9"
+	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/organization/platform/pgsql"
 	"github.com/labstack/echo"
@@ -12,22 +12,22 @@ type Service interface {
 }
 
 // New creates new organization application service
-func New(db *pg.DB, odb OrganizationDB) Organization {
+func New(db *sqlx.DB, odb OrganizationDB) Organization {
 	return Organization{
 		db:   db,
 		odb:  odb,
 	}
 }
 // Initialize initalizes profile application service with defaults
-func Initialize(db *pg.DB) Organization {
-	return New(db, pgsql.Organization{})
+func Initialize(dbx *sqlx.DB) Organization {
+	return New(dbx, pgsql.Organization{})
 }
 
 type Organization struct {
-	db   *pg.DB
+	db  *sqlx.DB
 	odb  OrganizationDB
 }
 
 type OrganizationDB interface {
-	Create(*pg.Tx, authapi.Profile) error
+	Create(sqlx.DB, authapi.Profile) error
 }

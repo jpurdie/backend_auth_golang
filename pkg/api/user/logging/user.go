@@ -51,7 +51,7 @@ func (ls *LogService) ListRoles(c echo.Context) (roles []authapi.Role, err error
 	return ls.Service.ListRoles(c)
 }
 
-func (ls *LogService) List(c echo.Context, orgID int) (users []authapi.User, err error) {
+func (ls *LogService) List(c echo.Context, orgID uint) (users []authapi.User, err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,

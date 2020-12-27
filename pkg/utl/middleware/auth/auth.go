@@ -2,8 +2,8 @@ package auth
 
 import (
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-pg/pg/v9"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	jwtUtil "github.com/jpurdie/authapi/pkg/utl/jwt"
 	"github.com/labstack/echo"
@@ -54,12 +54,18 @@ func Authenticate() echo.MiddlewareFunc {
 	}
 }
 
-func CheckAuthorization(db *pg.DB, requiredRoles []string) echo.MiddlewareFunc {
+type ProfileStruct struct {
+	RoleID   uint    `db:"roleID"`
+	RoleName string `db:"roleName"`
+	OrgID    uint    `db:"orgID"`
+	UserID   uint    `db:"userID"`
+	ProfID   uint    `db:"profileID"`
+}
+
+func CheckAuthorization(db sqlx.DB, requiredRoles []string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			op := "CheckAuthorization"
-			log.Println(op)
-
 			//checking org ID is valid UUID
 			orgIdReq := c.QueryParam("org_id")
 			orgUUID, err := uuid.Parse(orgIdReq)
@@ -67,7 +73,6 @@ func CheckAuthorization(db *pg.DB, requiredRoles []string) echo.MiddlewareFunc {
 				return c.NoContent(http.StatusUnprocessableEntity)
 			}
 			//made it here. is valid UUID
-
 			log.Println("Received request with " + orgUUID.String())
 
 			if err != nil {
@@ -76,19 +81,25 @@ func CheckAuthorization(db *pg.DB, requiredRoles []string) echo.MiddlewareFunc {
 					Code: authapi.EINTERNAL,
 					Err:  err,
 				})
-				//return c.JSON(http.StatusInternalServerError, "")
 			}
+			profStruct := ProfileStruct{}
 
-			roleName, orgID, userID, profileID := "", "", "", ""
+			query := "SELECT " +
+				"role.name as \"roleName\", " +
+				"role.id as \"roleID\", " +
+				"o.id as \"orgID\", " +
+				"u.id as \"userID\", " +
+				"p.id as \"profileID\" " +
+				"FROM roles AS role " +
+				"JOIN profiles AS p ON p.role_id = role.id " +
+				"JOIN organizations AS o ON p.role_id = role.id " +
+				"JOIN users AS u ON u.id = p.user_id " +
+				"WHERE o.uuid = $1 " +
+				"AND u.external_id = $2 " +
+				"AND o.active = true " +
+				"AND p.active = true;"
 
-			err = db.Model((*authapi.Role)(nil)).
-				Column("role.name", "o.id", "u.id", "ou.id").
-				Join("JOIN profiles AS ou ON ou.role_id = role.id").
-				Join("JOIN organizations AS o ON ou.role_id = role.id").
-				Join("JOIN users AS u ON u.id = ou.user_id").
-				Where("o.uuid = ?", orgUUID.String()).
-				Where("u.external_id = ?", c.Get("sub").(string)).
-				Select(&roleName, &orgID, &userID, &profileID)
+			err = db.QueryRowx(query, orgUUID.String(), c.Get("sub").(string)).StructScan(&profStruct)
 
 			if err != nil {
 				log.Println(err)
@@ -96,16 +107,16 @@ func CheckAuthorization(db *pg.DB, requiredRoles []string) echo.MiddlewareFunc {
 			}
 
 			for _, role := range requiredRoles {
-				if strings.ToLower(role) == strings.ToLower(roleName) {
-					c.Set("orgID", orgID)
-					c.Set("roleName", roleName)
-					c.Set("userID", userID)
-					c.Set("profileID", profileID)
+				if strings.ToLower(role) == strings.ToLower(profStruct.RoleName) {
+					c.Set("orgID", profStruct.OrgID)
+					c.Set("roleName", profStruct.RoleName)
+					c.Set("roleLevel", profStruct.RoleID)
+					c.Set("userID", profStruct.UserID)
+					c.Set("profileID", profStruct.ProfID)
 					return next(c)
 				}
 			}
 			return c.JSON(http.StatusUnauthorized, "")
-
 		}
 	}
 }

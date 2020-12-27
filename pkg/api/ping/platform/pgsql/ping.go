@@ -1,7 +1,7 @@
 package pgsql
 
 import (
-	"github.com/go-pg/pg/v9/orm"
+	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"log"
 )
@@ -16,7 +16,7 @@ type Ping struct{}
 
 
 // Create creates a new user on database
-func (p Ping) Create(db orm.DB, profile authapi.Ping) error {
+func (p Ping) Create(db sqlx.DB, profile authapi.Ping) error {
 	log.Println("Ping creation was successful")
 	return nil
 }
