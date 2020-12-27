@@ -12,7 +12,6 @@ import (
 	"github.com/labstack/echo"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -130,25 +129,34 @@ func (h *HTTP) patchUser(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, ErrUserNotFound)
 	}
 	//get org ID in request
-	orgID, _ := strconv.Atoi(c.Get("orgID").(string))
-	userID, _ := strconv.Atoi(c.Get("userID").(string))
-	profileID, _ := strconv.Atoi(c.Get("profileID").(string))
+	requestOrgID := c.Get("orgID").(uint)
+	requestUserID := int(c.Get("userID").(uint))
+	//requestProfileID := int(c.Get("profileID").(uint))
 
 	tempUser := authapi.User{}
 	tempUser.UUID = userUUID
 	tempOrg := authapi.Organization{}
-	tempOrg.ID = orgID
+	tempOrg.ID = int(requestOrgID)
 
-	profileToBeUpdated, err := h.svc.FetchProfile(c, userID, orgID)
+	userToBeUpdated, err := h.svc.FetchUserByUUID(c, userUUID, requestOrgID)
+	profileID := uint(0)
+
+
+	for _, tempProf := range userToBeUpdated.Profile {
+		if tempProf.OrganizationID == int(requestOrgID) {
+			profileID = uint(tempProf.ID)
+			break
+		}
+	}
 
 	if err != nil {
 		return c.NoContent(http.StatusNotFound)
 	}
 
-	if profileID == profileToBeUpdated.ID {
+	if requestUserID == userToBeUpdated.Profile[0].ID {
 		return c.JSON(http.StatusUnprocessableEntity, ErrModifySelf)
 	}
-
+	roleLevel := 0
 	if r.RoleName != nil { //checking if the role is being changed
 		//TODO Cache this
 		roles, err := h.svc.ListRoles(c) // list all the roles in the DB
@@ -162,7 +170,7 @@ func (h *HTTP) patchUser(c echo.Context) error {
 		roleFound := false // checking the role is a valid type
 		for _, role := range roles {
 			if strings.ToUpper(role.Name) == strings.ToUpper(*r.RoleName) {
-				profileToBeUpdated.RoleID = int(role.AccessLevel)
+				roleLevel = int(role.AccessLevel)
 				roleFound = true
 				break
 			}
@@ -172,7 +180,7 @@ func (h *HTTP) patchUser(c echo.Context) error {
 		}
 	}
 	//role found if it made it here
-	err = h.svc.Update(c, profileToBeUpdated)
+	err = h.svc.UpdateRole(c, roleLevel, profileID)
 	if err != nil {
 		log.Println(err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrInternal)

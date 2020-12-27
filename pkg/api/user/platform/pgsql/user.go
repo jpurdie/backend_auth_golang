@@ -5,6 +5,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"github.com/lib/pq"
+	"log"
 )
 
 type User struct{}
@@ -27,6 +28,64 @@ func (u User) FetchByID(db sqlx.DB, id uint) (authapi.User, error) {
 	profiles := []authapi.Profile{}
 	query = "SELECT * FROM profiles where user_id=$1"
 	err = db.Select(&profiles, query, us.ID)
+	if err != nil {
+		return authapi.User{}, &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+
+	for i, profile := range profiles {
+		org := []authapi.Organization{}
+		query = "SELECT * FROM organizations where id=$1"
+		err = db.Select(&org, query, profile.OrganizationID)
+		if err != nil {
+			return authapi.User{}, &authapi.Error{
+				Op:   op,
+				Code: authapi.EINTERNAL,
+				Err:  err,
+			}
+		}
+		profiles[i].Organization = &org[0]
+	}
+
+	for i, profile := range profiles {
+		role := []authapi.Role{}
+		query = "SELECT r.* FROM profiles p JOIN roles r on r.id = p.role_id where p.id=$1"
+		err = db.Select(&role, query, profile.ID)
+		if err != nil {
+			return authapi.User{}, &authapi.Error{
+				Op:   op,
+				Code: authapi.EINTERNAL,
+				Err:  err,
+			}
+		}
+		profiles[i].Role = &role[0]
+	}
+
+	us.Profile = profiles
+	return us, nil
+}
+
+func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID uint) (authapi.User, error) {
+	op := "FetchProfileByUUID"
+	us := authapi.User{}
+	//get user information
+	query := "SELECT * FROM users where uuid=$1"
+	err := db.QueryRowx(query, userUUID).StructScan(&us)
+
+	if err != nil {
+		return authapi.User{}, &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+
+	profiles := []authapi.Profile{}
+	query = "SELECT * FROM profiles where user_id=$1 and organization_id=$2"
+	err = db.Select(&profiles, query, us.ID, orgID)
 	if err != nil {
 		return authapi.User{}, &authapi.Error{
 			Op:   op,
@@ -183,22 +242,19 @@ func (u User) FetchByExternalID(db sqlx.DB, externalID string) (authapi.User, er
 	return us, nil
 }
 
-func (u User) Update(db sqlx.DB, p authapi.Profile) error {
-	// op := "Update"
+func (u User) UpdateRole(db sqlx.DB, level int, profileID uint) error {
+	op := "Update"
 
-	//_, err := db.Model(&p).
-	//	Set("role_id = ?role_id").
-	//	Set("updated_at = NOW()").
-	//	Where("id = ?id").
-	//	Update()
-	//
-	//if err != nil {
-	//	return &authapi.Error{
-	//		Op:   op,
-	//		Code: authapi.EINTERNAL,
-	//		Err:  err,
-	//	}
-	//}
+	_, err := db.Exec("UPDATE profiles set role_id=$1 WHERE id=$2", level, profileID)
+	if err != nil {
+		log.Println("There was a SQL error")
+		log.Println(err)
+		return &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
 	return nil
 }
 
@@ -237,7 +293,6 @@ func (u User) List(db sqlx.DB, orgID uint) ([]authapi.User, error) {
 			Err:  err,
 		}
 	}
-
 
 	for i, user := range users {
 		tempUser, err := u.FetchByID(db, uint(user.ID))

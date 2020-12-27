@@ -20,6 +20,10 @@ import (
 	profilel "github.com/jpurdie/authapi/pkg/api/profile/logging"
 	profilet "github.com/jpurdie/authapi/pkg/api/profile/transport"
 
+	"github.com/jpurdie/authapi/pkg/api/project"
+	projectL "github.com/jpurdie/authapi/pkg/api/project/logging"
+	projectT "github.com/jpurdie/authapi/pkg/api/project/transport"
+
 	"github.com/jpurdie/authapi/pkg/api/user"
 	userl "github.com/jpurdie/authapi/pkg/api/user/logging"
 	usert "github.com/jpurdie/authapi/pkg/api/user/transport"
@@ -69,6 +73,16 @@ func Start(cfg *config.Configuration) error {
 	inviteStruct := invitation.Initialize(dbx, pgsql.User{})
 	invitationLogger := invitationL.New(inviteStruct, log)
 	invitationT.NewHTTP(invitationLogger, v1, dbx)
+
+	///* Begin Project Logic */
+	projectStruct := project.Initialize(dbx)
+	projectLogger := projectL.New(projectStruct, log)
+	projectT.NewHTTP(projectLogger, v1, dbx)
+	//
+	///* Begin Strategic Alignment Logic */
+	//alignmentStruct := strategicalignment.Initialize(dbx)
+	//alignmentLogger := strategicL.New(alignmentStruct, log)
+	//strategicT.NewHTTP(alignmentLogger, v1, dbx)
 
 	orgt.NewHTTP(orgl.New(organization.Initialize(dbx), log), v1)
 	profilet.NewHTTP(profilel.New(profile.Initialize(dbx), log), v1)

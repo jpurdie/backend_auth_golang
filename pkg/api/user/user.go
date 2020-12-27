@@ -1,6 +1,7 @@
 package user
 
 import (
+	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/labstack/echo"
 	"net/http"
@@ -27,10 +28,13 @@ func (u User) List(c echo.Context, orgID uint) ([]authapi.User, error) {
 	return u.udb.List(*u.db, orgID)
 }
 
-func (u User) Update(c echo.Context, p authapi.Profile) error {
-	return u.udb.Update(*u.db, p)
+func (u User) UpdateRole(c echo.Context, level int, profileID uint) error {
+	return u.udb.UpdateRole(*u.db, level, profileID)
 }
 
 func (u User) FetchProfile(c echo.Context, userID int, orgID int) (authapi.Profile, error) {
 	return u.udb.FetchProfile(*u.db, userID, orgID)
+}
+func (u User) FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID uint) (authapi.User, error) {
+	return u.udb.FetchUserByUUID(*u.db, userUUID, orgID)
 }

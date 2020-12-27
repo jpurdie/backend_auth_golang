@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/user"
 	"github.com/labstack/echo"
@@ -65,18 +66,19 @@ func (ls *LogService) List(c echo.Context, orgID uint) (users []authapi.User, er
 	return ls.Service.List(c, orgID)
 }
 
-func (ls *LogService) Update(c echo.Context, p authapi.Profile) (err error) {
+func (ls *LogService) UpdateRole(c echo.Context, level int, profileID uint) (err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,
-			name, "Update request", err,
+			name, "UpdateRole request", err,
 			map[string]interface{}{
-				"req":  p,
-				"took": time.Since(begin),
+				"level":     level,
+				"profileID": profileID,
+				"took":      time.Since(begin),
 			},
 		)
 	}(time.Now())
-	return ls.Service.Update(c, p)
+	return ls.Service.UpdateRole(c, level, profileID)
 }
 
 func (ls *LogService) FetchProfile(c echo.Context, userID int, orgID int) (p authapi.Profile, err error) {
@@ -92,4 +94,19 @@ func (ls *LogService) FetchProfile(c echo.Context, userID int, orgID int) (p aut
 		)
 	}(time.Now())
 	return ls.Service.FetchProfile(c, userID, orgID)
+}
+
+func (ls *LogService) FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID uint) (u authapi.User, err error) {
+	defer func(begin time.Time) {
+		ls.logger.Log(
+			c,
+			name, "FetchUserByUUID request", err,
+			map[string]interface{}{
+				"userUUID": userUUID,
+				"orgID":    orgID,
+				"took":     time.Since(begin),
+			},
+		)
+	}(time.Now())
+	return ls.Service.FetchUserByUUID(c, userUUID, orgID)
 }

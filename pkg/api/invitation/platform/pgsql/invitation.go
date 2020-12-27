@@ -114,7 +114,7 @@ func (i Invitation) View(db sqlx.DB, tokenHash string) (authapi.Invitation, erro
 
 	sql := "SELECT i.* FROM invitations i " +
 		"WHERE " +
-		"deleted_at is not null " +
+		"deleted_at is null " +
 		"AND i.used = false " +
 		"AND i.token_hash=$1;"
 
