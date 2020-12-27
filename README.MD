@@ -4,7 +4,7 @@
 Featuring Many:Many relationship between organization and users for multi-tenant applications. 
 - Echo Framework
 - Auth0
-- go-pg
+- go-pg (migrating to SQLX)
 - go redis
 - Inspired by https://github.com/ribice/gorsk
 - Meant to be paired with https://github.com/jpurdie/frontend_auth
