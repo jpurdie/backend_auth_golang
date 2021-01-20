@@ -4,7 +4,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/organization/platform/pgsql"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type Service interface {
@@ -14,10 +14,11 @@ type Service interface {
 // New creates new organization application service
 func New(db *sqlx.DB, odb OrganizationDB) Organization {
 	return Organization{
-		db:   db,
-		odb:  odb,
+		db:  db,
+		odb: odb,
 	}
 }
+
 // Initialize initalizes profile application service with defaults
 func Initialize(dbx *sqlx.DB) Organization {
 	return New(dbx, pgsql.Organization{})
@@ -25,7 +26,7 @@ func Initialize(dbx *sqlx.DB) Organization {
 
 type Organization struct {
 	db  *sqlx.DB
-	odb  OrganizationDB
+	odb OrganizationDB
 }
 
 type OrganizationDB interface {

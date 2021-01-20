@@ -1,11 +1,12 @@
 package logging
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/user"
-	"github.com/labstack/echo"
-	"time"
+	"github.com/labstack/echo/v4"
 )
 
 // New creates new password logging service

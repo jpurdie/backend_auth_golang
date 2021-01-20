@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/jpurdie/authapi"
@@ -32,7 +32,7 @@ type tokenParser struct {
 
 func (t tokenParser) ParseToken(s string) (*jwt.Token, error) {
 	if s == "" {
-		return nil, authapi.ErrGeneric
+		return nil, authapi.EINVALID
 	}
 	return &jwt.Token{
 		Raw:    "abcd",

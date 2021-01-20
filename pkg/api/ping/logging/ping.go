@@ -1,11 +1,12 @@
 package logging
+
 import (
-	"github.com/jpurdie/authapi"
-	"github.com/jpurdie/authapi/pkg/api/ping"
 	"time"
 
-	"github.com/labstack/echo"
+	"github.com/jpurdie/authapi"
+	"github.com/jpurdie/authapi/pkg/api/ping"
 
+	"github.com/labstack/echo/v4"
 )
 
 func New(svc ping.Service, logger authapi.Logger) *LogService {
@@ -24,7 +25,7 @@ type LogService struct {
 const name = "ping"
 
 // Change logging
-func (ls *LogService) Create(c echo.Context, p  authapi.Ping) (err error) {
+func (ls *LogService) Create(c echo.Context, p authapi.Ping) (err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,

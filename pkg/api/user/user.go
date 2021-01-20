@@ -1,10 +1,11 @@
 package user
 
 import (
+	"net/http"
+
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
-	"github.com/labstack/echo"
-	"net/http"
+	"github.com/labstack/echo/v4"
 )
 
 // Custom errors

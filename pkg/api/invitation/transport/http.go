@@ -1,6 +1,10 @@
 package transport
 
 import (
+	"log"
+	"net/http"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
@@ -8,10 +12,7 @@ import (
 	auth0 "github.com/jpurdie/authapi/pkg/utl/Auth0"
 	authUtil "github.com/jpurdie/authapi/pkg/utl/auth"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
-	"github.com/labstack/echo"
-	"log"
-	"net/http"
-	"time"
+	"github.com/labstack/echo/v4"
 )
 
 var (

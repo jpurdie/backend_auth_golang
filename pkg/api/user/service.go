@@ -5,7 +5,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/user/platform/pgsql"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type Service interface {

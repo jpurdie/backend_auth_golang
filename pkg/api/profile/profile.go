@@ -1,10 +1,11 @@
 package profile
 
 import (
-	"github.com/jpurdie/authapi"
 	"net/http"
 
-	"github.com/labstack/echo"
+	"github.com/jpurdie/authapi"
+
+	"github.com/labstack/echo/v4"
 )
 
 // Custom errors

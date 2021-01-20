@@ -2,6 +2,10 @@ package transport
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"strings"
+
 	"github.com/go-playground/validator"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -9,10 +13,7 @@ import (
 	"github.com/jpurdie/authapi/pkg/api/user"
 	auth0 "github.com/jpurdie/authapi/pkg/utl/Auth0"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
-	"github.com/labstack/echo"
-	"log"
-	"net/http"
-	"strings"
+	"github.com/labstack/echo/v4"
 )
 
 type HTTP struct {
@@ -140,7 +141,6 @@ func (h *HTTP) patchUser(c echo.Context) error {
 
 	userToBeUpdated, err := h.svc.FetchUserByUUID(c, userUUID, requestOrgID)
 	profileID := uint(0)
-
 
 	for _, tempProf := range userToBeUpdated.Profile {
 		if tempProf.OrganizationID == int(requestOrgID) {

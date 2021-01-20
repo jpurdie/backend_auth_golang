@@ -1,15 +1,16 @@
 package auth
 
 import (
+	"log"
+	"net/http"
+	"strings"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	jwtUtil "github.com/jpurdie/authapi/pkg/utl/jwt"
-	"github.com/labstack/echo"
-	"log"
-	"net/http"
-	"strings"
+	"github.com/labstack/echo/v4"
 )
 
 // TokenParser represents JWT token parser
@@ -67,7 +68,7 @@ func CheckAuthorization(db sqlx.DB, requiredRoles []string) echo.MiddlewareFunc 
 		return func(c echo.Context) error {
 			op := "CheckAuthorization"
 			//checking org ID is valid UUID
-			orgIdReq := c.QueryParam("org_id")
+			orgIdReq := c.Request().Header.Get("Org-ID")
 			orgUUID, err := uuid.Parse(orgIdReq)
 			if err != nil {
 				return c.NoContent(http.StatusUnprocessableEntity)
@@ -99,9 +100,8 @@ func CheckAuthorization(db sqlx.DB, requiredRoles []string) echo.MiddlewareFunc 
 				"AND o.active = true " +
 				"AND p.active = true;"
 
-			err = db.QueryRowx(query, orgUUID.String(), c.Get("sub").(string)).StructScan(&profStruct)
-
-			if err != nil {
+			row := db.QueryRowx(query, orgUUID.String(), c.Get("sub").(string)).StructScan(&profStruct)
+			if row != nil {
 				log.Println(err)
 				return c.JSON(http.StatusUnauthorized, "")
 			}

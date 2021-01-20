@@ -1,8 +1,9 @@
 package public
 
 import (
-	"github.com/labstack/echo"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
 // PingStore defines database operations for Ping.

@@ -3,7 +3,7 @@ package public
 import (
 	"github.com/go-pg/pg"
 	"github.com/jpurdie/authapi/pkg/api/database"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type ctxKey int

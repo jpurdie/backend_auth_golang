@@ -1,10 +1,11 @@
 package logging
 
 import (
+	"time"
+
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/invitation"
-	"github.com/labstack/echo"
-	"time"
+	"github.com/labstack/echo/v4"
 )
 
 func New(svc invitation.Service, logger authapi.Logger) *LogService {

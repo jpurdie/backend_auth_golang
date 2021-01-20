@@ -3,13 +3,14 @@ package invitation
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/jpurdie/authapi"
-	email "github.com/jpurdie/authapi/pkg/utl/mail"
-	"github.com/labstack/echo"
 	"math/rand"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/jpurdie/authapi"
+	email "github.com/jpurdie/authapi/pkg/utl/mail"
+	"github.com/labstack/echo/v4"
 )
 
 func GenerateInviteTokenHash(str string) string {

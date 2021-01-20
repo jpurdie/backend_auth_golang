@@ -1,11 +1,12 @@
 package logging
+
 import (
-	"github.com/jpurdie/authapi"
-	"github.com/jpurdie/authapi/pkg/api/profile"
 	"time"
 
-	"github.com/labstack/echo"
+	"github.com/jpurdie/authapi"
+	"github.com/jpurdie/authapi/pkg/api/profile"
 
+	"github.com/labstack/echo/v4"
 )
 
 // New creates new password logging service
@@ -25,7 +26,7 @@ type LogService struct {
 const name = "profile"
 
 // Change logging
-func (ls *LogService) Change(c echo.Context, p  authapi.Profile) (err error) {
+func (ls *LogService) Change(c echo.Context, p authapi.Profile) (err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,

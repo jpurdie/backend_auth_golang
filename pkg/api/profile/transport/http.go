@@ -2,15 +2,16 @@ package transport
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/go-playground/validator"
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/profile"
 	auth0 "github.com/jpurdie/authapi/pkg/utl/Auth0"
 	authUtil "github.com/jpurdie/authapi/pkg/utl/auth"
-	"github.com/labstack/echo"
-	"log"
-	"net/http"
+	"github.com/labstack/echo/v4"
 )
 
 // HTTP represents password http transport service

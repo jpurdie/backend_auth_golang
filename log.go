@@ -1,6 +1,6 @@
 package authapi
 
-import "github.com/labstack/echo"
+import "github.com/labstack/echo/v4"
 
 // Logger represents logging interface
 type Logger interface {

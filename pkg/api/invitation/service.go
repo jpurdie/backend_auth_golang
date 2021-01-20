@@ -5,7 +5,7 @@ import (
 	"github.com/jpurdie/authapi"
 	"github.com/jpurdie/authapi/pkg/api/invitation/platform/pgsql"
 	"github.com/jpurdie/authapi/pkg/api/user"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type Invitation struct {

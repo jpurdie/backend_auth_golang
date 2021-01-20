@@ -1,9 +1,10 @@
 package organization
 
 import (
-	"github.com/jpurdie/authapi"
-	"github.com/labstack/echo"
 	"net/http"
+
+	"github.com/jpurdie/authapi"
+	"github.com/labstack/echo/v4"
 )
 
 // Custom errors

@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/jpurdie/authapi/pkg/utl/middleware/secure"
-	"github.com/labstack/echo/middleware"
+	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 // New instantates new Echo server
