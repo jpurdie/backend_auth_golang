@@ -9,3 +9,8 @@ func StringContains(s []string, str string) bool {
 
 	return false
 }
+
+const (
+	LayoutISO = "2006-01-02"
+	LayoutUS  = "January 2, 2006"
+)

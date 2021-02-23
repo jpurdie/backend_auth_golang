@@ -53,7 +53,7 @@ func (ls *LogService) ListRoles(c echo.Context) (roles []authapi.Role, err error
 	return ls.Service.ListRoles(c)
 }
 
-func (ls *LogService) List(c echo.Context, orgID uint) (users []authapi.User, err error) {
+func (ls *LogService) List(c echo.Context, orgID int) (users []authapi.User, err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,
@@ -67,7 +67,7 @@ func (ls *LogService) List(c echo.Context, orgID uint) (users []authapi.User, er
 	return ls.Service.List(c, orgID)
 }
 
-func (ls *LogService) UpdateRole(c echo.Context, level int, profileID uint) (err error) {
+func (ls *LogService) UpdateRole(c echo.Context, level int, profileID int) (err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,
@@ -97,7 +97,7 @@ func (ls *LogService) FetchProfile(c echo.Context, userID int, orgID int) (p aut
 	return ls.Service.FetchProfile(c, userID, orgID)
 }
 
-func (ls *LogService) FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID uint) (u authapi.User, err error) {
+func (ls *LogService) FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID int) (u authapi.User, err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,

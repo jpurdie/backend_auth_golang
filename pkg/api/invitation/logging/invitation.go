@@ -66,7 +66,7 @@ func (ls *LogService) CreateUser(c echo.Context, profile authapi.Profile, invite
 	return ls.Service.CreateUser(c, profile, invite)
 }
 
-func (ls *LogService) List(c echo.Context, orgID uint, includeExpired bool, includeUsed bool) (invites []authapi.Invitation, err error) {
+func (ls *LogService) List(c echo.Context, orgID int, includeExpired bool, includeUsed bool) (invites []authapi.Invitation, err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,
@@ -82,7 +82,7 @@ func (ls *LogService) List(c echo.Context, orgID uint, includeExpired bool, incl
 	return ls.Service.List(c, orgID, includeExpired, includeUsed)
 }
 
-func (ls *LogService) Delete(c echo.Context, email string, orgID uint) (err error) {
+func (ls *LogService) Delete(c echo.Context, email string, orgID int) (err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,

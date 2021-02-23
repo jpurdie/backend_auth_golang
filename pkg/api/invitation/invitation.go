@@ -82,10 +82,10 @@ func (i Invitation) View(c echo.Context, tokenPlainText string) (authapi.Invitat
 	tokenHash := GenerateInviteTokenHash(tokenPlainText)
 	return i.idb.View(*i.db, tokenHash)
 }
-func (i Invitation) Delete(c echo.Context, email string, orgID uint) error {
+func (i Invitation) Delete(c echo.Context, email string, orgID int) error {
 	return i.idb.Delete(*i.db, email, orgID)
 }
-func (i Invitation) List(c echo.Context, orgID uint, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error) {
+func (i Invitation) List(c echo.Context, orgID int, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error) {
 	return i.idb.List(*i.db, orgID, includeExpired, includeUsed)
 }
 

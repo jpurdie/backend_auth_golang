@@ -56,11 +56,11 @@ func Authenticate() echo.MiddlewareFunc {
 }
 
 type ProfileStruct struct {
-	RoleID   uint    `db:"roleID"`
+	RoleID   int    `db:"roleID"`
 	RoleName string `db:"roleName"`
-	OrgID    uint    `db:"orgID"`
-	UserID   uint    `db:"userID"`
-	ProfID   uint    `db:"profileID"`
+	OrgID    int    `db:"orgID"`
+	UserID   int    `db:"userID"`
+	ProfID   int    `db:"profileID"`
 }
 
 func CheckAuthorization(db sqlx.DB, requiredRoles []string) echo.MiddlewareFunc {

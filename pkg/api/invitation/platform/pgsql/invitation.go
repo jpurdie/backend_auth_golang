@@ -1,9 +1,10 @@
 package pgsql
 
 import (
+	"log"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
-	"log"
 )
 
 type Invitation struct {
@@ -31,7 +32,7 @@ func (i Invitation) Create(db sqlx.DB, invite authapi.Invitation) error {
 	return nil
 }
 
-func (i Invitation) Delete(db sqlx.DB, email string, orgID uint) error {
+func (i Invitation) Delete(db sqlx.DB, email string, orgID int) error {
 	op := "Delete"
 	sql := "UPDATE invitations set deleted_at=now() WHERE email=$1 AND organization_id=$2"
 	tx := db.MustBegin()
@@ -47,7 +48,7 @@ func (i Invitation) Delete(db sqlx.DB, email string, orgID uint) error {
 	return nil
 }
 
-func (i Invitation) List(db sqlx.DB, orgID uint, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error) {
+func (i Invitation) List(db sqlx.DB, orgID int, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error) {
 	op := "List"
 	invitations := make([]authapi.Invitation, 0)
 
@@ -81,7 +82,7 @@ func (i Invitation) List(db sqlx.DB, orgID uint, includeExpired bool, includeUse
 	return invitations, nil
 }
 
-func (i Invitation) ViewByEmail(db sqlx.DB, email string, orgID uint) (authapi.Invitation, error) {
+func (i Invitation) ViewByEmail(db sqlx.DB, email string, orgID int) (authapi.Invitation, error) {
 	op := "View"
 	invite := authapi.Invitation{}
 

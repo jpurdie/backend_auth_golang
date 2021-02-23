@@ -1,17 +1,18 @@
 package pgsql
 
 import (
+	"log"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi"
 	"github.com/lib/pq"
-	"log"
 )
 
 type User struct{}
 
-func (u User) FetchByID(db sqlx.DB, id uint) (authapi.User, error) {
-	op := "FetchByEmail"
+func (u User) FetchUserByID(db sqlx.DB, id int) (authapi.User, error) {
+	op := "FetchUserByID"
 	us := authapi.User{}
 	//get user information
 	query := "SELECT * FROM users where id=$1"
@@ -68,7 +69,7 @@ func (u User) FetchByID(db sqlx.DB, id uint) (authapi.User, error) {
 	return us, nil
 }
 
-func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID uint) (authapi.User, error) {
+func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (authapi.User, error) {
 	op := "FetchProfileByUUID"
 	us := authapi.User{}
 	//get user information
@@ -242,7 +243,7 @@ func (u User) FetchByExternalID(db sqlx.DB, externalID string) (authapi.User, er
 	return us, nil
 }
 
-func (u User) UpdateRole(db sqlx.DB, level int, profileID uint) error {
+func (u User) UpdateRole(db sqlx.DB, level int, profileID int) error {
 	op := "Update"
 
 	_, err := db.Exec("UPDATE profiles set role_id=$1 WHERE id=$2", level, profileID)
@@ -276,7 +277,7 @@ func (u User) ListRoles(db sqlx.DB) ([]authapi.Role, error) {
 	return roles, nil
 }
 
-func (u User) List(db sqlx.DB, orgID uint) ([]authapi.User, error) {
+func (u User) List(db sqlx.DB, orgID int) ([]authapi.User, error) {
 	op := "List"
 	var users []authapi.User
 
@@ -295,7 +296,7 @@ func (u User) List(db sqlx.DB, orgID uint) ([]authapi.User, error) {
 	}
 
 	for i, user := range users {
-		tempUser, err := u.FetchByID(db, uint(user.ID))
+		tempUser, err := u.FetchUserByID(db, user.ID)
 		if err != nil {
 			return nil, &authapi.Error{
 				Op:   op,
@@ -334,33 +335,20 @@ func (u User) List(db sqlx.DB, orgID uint) ([]authapi.User, error) {
 	//}
 
 }
-func (u User) ListAuthorized(db sqlx.DB, us *authapi.User, includeInactive bool) ([]authapi.Profile, error) {
-	//op := "ListAuthorized"
-	var profile []authapi.Profile
-	//inactiveSQL := "organization.active = TRUE"
-	//if includeInactive {
-	//	inactiveSQL = "1=1" //will return inactive and active
-	//}
-	//err := db.Model(&profile).
-	//	Column("profile.*").
-	//	Relation("Organization").
-	//	Relation("User").
-	//	Relation("Role").
-	//	//	Join("JOIN organization_users AS cu ON cu.organization_id = organization.id").
-	//	//	Join("JOIN users AS u ON cu.user_id = u.id").
-	//	Where("external_id = ?", us.ExternalID).
-	//	Where(inactiveSQL).
-	//	Order("organization.name asc").
-	//	Select()
-	//
-	//if err != nil {
-	//	return nil, &authapi.Error{
-	//		Op:   op,
-	//		Code: authapi.EINTERNAL,
-	//		Err:  err,
-	//	}
-	//}
-	return profile, nil
+func (u User) Update(db sqlx.DB, userToUpdate authapi.User) error {
+	op := "Update"
+	sql := "UPDATE users SET first_name=$1, last_name=$2, time_zone=$3 WHERE id=$4"
+	_, err := db.Exec(sql, userToUpdate.FirstName, userToUpdate.LastName, userToUpdate.TimeZone, userToUpdate.ID)
+
+	if err != nil {
+		return &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  err,
+		}
+	}
+
+	return nil
 }
 
 func (u User) FetchProfile(db sqlx.DB, userID int, orgID int) (authapi.Profile, error) {

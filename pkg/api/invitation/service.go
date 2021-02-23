@@ -25,8 +25,8 @@ func New(db *sqlx.DB, idb InvitationDB, udb user.UserDB) Invitation {
 
 type Service interface {
 	Create(c echo.Context, invite authapi.Invitation) error
-	List(c echo.Context, orgID uint, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
-	Delete(c echo.Context, email string, orgID uint) error
+	List(c echo.Context, orgID int, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
+	Delete(c echo.Context, email string, orgID int) error
 	View(c echo.Context, tokenPlainTextString string) (authapi.Invitation, error)
 	CreateUser(c echo.Context, cu authapi.Profile, i authapi.Invitation) error
 }
@@ -38,9 +38,9 @@ func Initialize(dbx *sqlx.DB, usr user.UserDB) Invitation {
 
 type InvitationDB interface {
 	Create(dbx sqlx.DB, invite authapi.Invitation) error
-	Delete(dbx sqlx.DB, email string, orgID uint) error
-	ViewByEmail(dbx sqlx.DB, email string, orgID uint) (authapi.Invitation, error)
+	Delete(dbx sqlx.DB, email string, orgID int) error
+	ViewByEmail(dbx sqlx.DB, email string, orgID int) (authapi.Invitation, error)
 	View(dbx sqlx.DB, tokenPlainTextString string) (authapi.Invitation, error)
-	List(dbx sqlx.DB, orgID uint, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
+	List(dbx sqlx.DB, orgID int, includeExpired bool, includeUsed bool) ([]authapi.Invitation, error)
 	CreateUser(dbx sqlx.DB, cu authapi.Profile, i authapi.Invitation) error
 }

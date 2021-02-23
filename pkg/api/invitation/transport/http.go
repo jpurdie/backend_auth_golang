@@ -144,7 +144,7 @@ func (h *HTTP) createUser(c echo.Context) error {
 }
 
 func (h *HTTP) list(c echo.Context) error {
-	oID := c.Get("orgID").(uint)
+	oID := c.Get("orgID").(int)
 	invitations, err := h.svc.List(c, oID, false, false)
 	if err != nil {
 		log.Println(err)
@@ -172,8 +172,8 @@ func (h *HTTP) create(c echo.Context) error {
 	u := authapi.User{}
 	u.Email = r.Email
 
-	invitorID := c.Get("userID").(uint)
-	orgID := c.Get("orgID").(uint)
+	invitorID := c.Get("userID").(int)
+	orgID := c.Get("orgID").(int)
 
 	invite := authapi.Invitation{
 		Email:          r.Email,
@@ -201,7 +201,7 @@ func (h *HTTP) delete(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, CannotFindInvitationErr)
 	}
 
-	oID := c.Get("orgID").(uint)
+	oID := c.Get("orgID").(int)
 
 	//delete invite
 	err := h.svc.Delete(c, c.Param("email"), oID)
