@@ -15,7 +15,7 @@ type Service interface {
 	List(c echo.Context, orgID int) ([]authapi.User, error)
 	UpdateRole(c echo.Context, level int, profileID int) error
 	FetchProfile(c echo.Context, userID int, orgID int) (authapi.Profile, error)
-	FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID int) (authapi.User, error)
+	FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID int) (*authapi.User, error)
 	FetchUserByID(c echo.Context, userID int) (authapi.User, error)
 	Update(c echo.Context, userUUID uuid.UUID, orgID int, fieldsToUpdate map[string]string) error
 }
@@ -46,7 +46,7 @@ type UserDB interface {
 	FetchByExternalID(db sqlx.DB, externalID string) (authapi.User, error)
 	//ListAuthorized(db orm.DB,u *authapi.User, includeInactive bool) ([]authapi.Profile, error)
 	FetchProfile(db sqlx.DB, userID int, orgID int) (authapi.Profile, error)
-	FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (authapi.User, error)
+	FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (*authapi.User, error)
 	FetchUserByID(db sqlx.DB, userID int) (authapi.User, error)
 	Update(db sqlx.DB, user authapi.User) error
 	//Delete(db orm.DB, p authapi.Profile) error

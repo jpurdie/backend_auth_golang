@@ -6,7 +6,7 @@ import (
 	"github.com/jpurdie/authapi/pkg/api/invitation"
 	invitationL "github.com/jpurdie/authapi/pkg/api/invitation/logging"
 	invitationT "github.com/jpurdie/authapi/pkg/api/invitation/transport"
-	"github.com/jpurdie/authapi/pkg/api/user/platform/pgsql"
+	userDB "github.com/jpurdie/authapi/pkg/api/user/platform/pgsql"
 
 	"github.com/jpurdie/authapi/pkg/api/organization"
 	orgl "github.com/jpurdie/authapi/pkg/api/organization/logging"
@@ -70,7 +70,7 @@ func Start(cfg *config.Configuration) error {
 	usert.NewHTTP(userLogger, v1, dbx)
 
 	///* Begin Invitation Logic */
-	inviteStruct := invitation.Initialize(dbx, pgsql.User{})
+	inviteStruct := invitation.Initialize(dbx, userDB.User{})
 	invitationLogger := invitationL.New(inviteStruct, log)
 	invitationT.NewHTTP(invitationLogger, v1, dbx)
 

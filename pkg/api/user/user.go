@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 
+	auth0 "github.com/jpurdie/authapi/pkg/utl/Auth0"
+
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
 	"github.com/labstack/echo/v4"
@@ -37,7 +39,7 @@ func (u User) UpdateRole(c echo.Context, level int, profileID int) error {
 func (u User) FetchProfile(c echo.Context, userID int, orgID int) (authapi.Profile, error) {
 	return u.udb.FetchProfile(*u.db, userID, orgID)
 }
-func (u User) FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID int) (authapi.User, error) {
+func (u User) FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID int) (*authapi.User, error) {
 	return u.udb.FetchUserByUUID(*u.db, userUUID, orgID)
 }
 
@@ -46,7 +48,7 @@ func (u User) FetchUserByID(c echo.Context, userID int) (authapi.User, error) {
 }
 func (u User) Update(c echo.Context, userUUID uuid.UUID, orgID int, fieldsToUpdate map[string]string) error {
 	op := "Update"
-	currUser, err := u.udb.FetchUserByUUID(*u.db, userUUID, orgID)
+	myUser, err := u.udb.FetchUserByUUID(*u.db, userUUID, orgID)
 	if err != nil {
 		return &authapi.Error{
 			Op:   op,
@@ -55,15 +57,24 @@ func (u User) Update(c echo.Context, userUUID uuid.UUID, orgID int, fieldsToUpda
 	}
 	for key, val := range fieldsToUpdate {
 		switch key {
-		case "/firstName":
-			currUser.FirstName = val
-		case "/lastName":
-			currUser.LastName = val
-		case "/timeZone":
-			currUser.TimeZone = &val
+		case "firstName":
+			myUser.FirstName = val
+		case "lastName":
+			myUser.LastName = val
+		case "timeZone":
+			myUser.TimeZone = &val
 		}
 	}
-	log.Print(currUser)
+	log.Print(myUser)
 
-	return u.udb.Update(*u.db, currUser)
+	err = u.udb.Update(*u.db, *myUser)
+
+	if err == nil {
+		auth0Err := auth0.UpdateUser(*myUser)
+		log.Println(auth0Err)
+		return auth0Err
+	} else {
+		return err
+	}
+
 }

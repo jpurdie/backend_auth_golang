@@ -97,7 +97,7 @@ func (ls *LogService) FetchProfile(c echo.Context, userID int, orgID int) (p aut
 	return ls.Service.FetchProfile(c, userID, orgID)
 }
 
-func (ls *LogService) FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID int) (u authapi.User, err error) {
+func (ls *LogService) FetchUserByUUID(c echo.Context, userUUID uuid.UUID, orgID int) (u *authapi.User, err error) {
 	defer func(begin time.Time) {
 		ls.logger.Log(
 			c,

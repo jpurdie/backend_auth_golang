@@ -69,7 +69,7 @@ func (u User) FetchUserByID(db sqlx.DB, id int) (authapi.User, error) {
 	return us, nil
 }
 
-func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (authapi.User, error) {
+func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (userFromDB *authapi.User, error error) {
 	op := "FetchProfileByUUID"
 	us := authapi.User{}
 	//get user information
@@ -77,7 +77,7 @@ func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (authap
 	err := db.QueryRowx(query, userUUID).StructScan(&us)
 
 	if err != nil {
-		return authapi.User{}, &authapi.Error{
+		return &authapi.User{}, &authapi.Error{
 			Op:   op,
 			Code: authapi.EINTERNAL,
 			Err:  err,
@@ -88,7 +88,7 @@ func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (authap
 	query = "SELECT * FROM profiles where user_id=$1 and organization_id=$2"
 	err = db.Select(&profiles, query, us.ID, orgID)
 	if err != nil {
-		return authapi.User{}, &authapi.Error{
+		return &authapi.User{}, &authapi.Error{
 			Op:   op,
 			Code: authapi.EINTERNAL,
 			Err:  err,
@@ -100,7 +100,7 @@ func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (authap
 		query = "SELECT * FROM organizations where id=$1"
 		err = db.Select(&org, query, profile.OrganizationID)
 		if err != nil {
-			return authapi.User{}, &authapi.Error{
+			return &authapi.User{}, &authapi.Error{
 				Op:   op,
 				Code: authapi.EINTERNAL,
 				Err:  err,
@@ -114,7 +114,7 @@ func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (authap
 		query = "SELECT r.* FROM profiles p JOIN roles r on r.id = p.role_id where p.id=$1"
 		err = db.Select(&role, query, profile.ID)
 		if err != nil {
-			return authapi.User{}, &authapi.Error{
+			return &authapi.User{}, &authapi.Error{
 				Op:   op,
 				Code: authapi.EINTERNAL,
 				Err:  err,
@@ -124,7 +124,7 @@ func (u User) FetchUserByUUID(db sqlx.DB, userUUID uuid.UUID, orgID int) (authap
 	}
 
 	us.Profile = profiles
-	return us, nil
+	return &us, nil
 }
 
 func (u User) FetchByEmail(db sqlx.DB, email string) (authapi.User, error) {
@@ -337,7 +337,7 @@ func (u User) List(db sqlx.DB, orgID int) ([]authapi.User, error) {
 }
 func (u User) Update(db sqlx.DB, userToUpdate authapi.User) error {
 	op := "Update"
-	sql := "UPDATE users SET first_name=$1, last_name=$2, time_zone=$3 WHERE id=$4"
+	sql := "UPDATE users SET first_name=$1, last_name=$2, timezone=$3, updated_at=now() WHERE id=$4"
 	_, err := db.Exec(sql, userToUpdate.FirstName, userToUpdate.LastName, userToUpdate.TimeZone, userToUpdate.ID)
 
 	if err != nil {
