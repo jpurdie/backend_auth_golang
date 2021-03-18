@@ -24,12 +24,11 @@ type HTTP struct {
 func NewHTTP(svc user.Service, er *echo.Group, db *sqlx.DB) {
 	h := HTTP{svc}
 	ur := er.Group("/users")
-	ur.GET("/me", h.fetchMe, authMw.Authenticate())
-	ur.GET("/roles", h.listRoles, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
-	ur.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
-	ur.POST("/validationemails", h.sendValidationEmail, authMw.Authenticate())
 	ur.PATCH("/:uID", h.update, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin", "user"}))
 	ur.POST("/passwords/:email", h.changePassword, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin", "user"}))
+	ur.GET("/me", h.fetchMe, authMw.Authenticate())
+	ur.GET("", h.list, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
+	ur.GET("/roles", h.listRoles, authMw.Authenticate(), authMw.CheckAuthorization(*db, []string{"owner", "admin"}))
 
 }
 
@@ -42,60 +41,6 @@ var (
 	ErrAuth0Unknown = authapi.Error{CodeInt: http.StatusBadRequest, Message: "There was a problem with the auth provider."}
 )
 
-type fetchUserRes struct {
-	User userResp `json:"user"`
-}
-
-type userResp struct {
-	User authapi.User `json:"user"`
-}
-
-type patchRequest struct {
-	RoleName *string `json:"role,omitempty"`
-}
-
-func (h *HTTP) sendValidationEmail(c echo.Context) error {
-	externalID := c.Get("sub").(string)
-	u := authapi.User{}
-	u.ExternalID = externalID
-	err := auth0.SendVerificationEmail(u)
-	if err != nil {
-		log.Println(err)
-		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
-	}
-	return c.NoContent(http.StatusOK)
-}
-
-func (h *HTTP) fetchMe(c echo.Context) error {
-	externalID := c.Get("sub").(string)
-	userFromDB, err := h.svc.FetchByExternalID(c, externalID)
-	if err != nil {
-		log.Println(err)
-		if errCode := authapi.ErrorType(err); errCode != "" {
-			return c.JSON(http.StatusInternalServerError, ErrInternal)
-		}
-		return c.JSON(http.StatusInternalServerError, ErrInternal)
-	}
-	if userFromDB.UUID != uuid.Nil {
-		var tempUser = userResp{}
-		tempUser.User = userFromDB
-		return c.JSON(http.StatusOK, tempUser)
-	}
-	return c.NoContent(http.StatusNotFound)
-}
-
-func (h *HTTP) listRoles(c echo.Context) error {
-	roles, err := h.svc.ListRoles(c)
-	if err != nil {
-		log.Println(err)
-		if errCode := authapi.ErrorType(err); errCode != "" {
-			return c.JSON(http.StatusInternalServerError, ErrInternal)
-		}
-		return c.JSON(http.StatusInternalServerError, ErrInternal)
-	}
-	return c.JSON(http.StatusOK, roles)
-}
-
 func (h *HTTP) changePassword(c echo.Context) error {
 	//orgID := c.Get("orgID").(int)
 	email := c.Param("email")
@@ -103,25 +48,6 @@ func (h *HTTP) changePassword(c echo.Context) error {
 	u.Email = email
 	auth0.InitiatePasswordReset(u)
 	return c.NoContent(http.StatusOK)
-
-}
-
-func (h *HTTP) list(c echo.Context) error {
-	orgID := c.Get("orgID").(int)
-
-	users, err := h.svc.List(c, orgID)
-	if err != nil {
-		log.Println(err)
-		if errCode := authapi.ErrorType(err); errCode != "" {
-			return c.JSON(http.StatusInternalServerError, ErrInternal)
-		}
-		return c.JSON(http.StatusInternalServerError, ErrInternal)
-	}
-	//resp := listUsersResp{
-	//	Users: users,
-	//}
-	return c.JSON(http.StatusOK, users)
-
 }
 
 type PatchReq struct {
@@ -168,7 +94,10 @@ func (h *HTTP) update(c echo.Context) error {
 			str := strings.ToUpper(fmt.Sprintf("%v", patchItem.Value))
 			fmt.Println("TimeZone being Updated to " + str)
 			fieldsToUpdate["timeZone"] = str
-
+		case "/role":
+			str := strings.ToUpper(fmt.Sprintf("%v", patchItem.Value))
+			fmt.Println("Role being Updated to " + str)
+			fieldsToUpdate["timeZone"] = str
 		}
 	}
 
@@ -177,4 +106,60 @@ func (h *HTTP) update(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	return c.NoContent(http.StatusOK)
+}
+
+type userResp struct {
+	User authapi.User `json:"user"`
+}
+
+type fetchUserRes struct {
+	User userResp `json:"user"`
+}
+
+func (h *HTTP) fetchMe(c echo.Context) error {
+	externalID := c.Get("sub").(string)
+
+	userFromDB, err := h.svc.FetchByExternalID(c, externalID)
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorType(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrUserNotFound)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrUserNotFound)
+	}
+	if userFromDB.UUID != uuid.Nil {
+		var tempUser = userResp{}
+		tempUser.User = *userFromDB
+		return c.JSON(http.StatusOK, tempUser)
+	}
+	return c.NoContent(http.StatusNotFound)
+}
+func (h *HTTP) list(c echo.Context) error {
+	orgID := c.Get("orgID").(int)
+
+	users, err := h.svc.List(c, orgID)
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorType(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrInternal)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrInternal)
+	}
+	//resp := listUsersResp{
+	//	Users: users,
+	//}
+	return c.JSON(http.StatusOK, users)
+
+}
+
+func (h *HTTP) listRoles(c echo.Context) error {
+	roles, err := h.svc.ListRoles(c)
+	if err != nil {
+		log.Println(err)
+		if errCode := authapi.ErrorType(err); errCode != "" {
+			return c.JSON(http.StatusInternalServerError, ErrInternal)
+		}
+		return c.JSON(http.StatusInternalServerError, ErrInternal)
+	}
+	return c.JSON(http.StatusOK, roles)
 }

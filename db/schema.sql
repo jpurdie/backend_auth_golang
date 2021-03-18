@@ -234,7 +234,9 @@ create table if not exists projects
     est_end_date        date,
     act_start_date      date,
     act_end_date        date,
-    open_for_time_entry boolean
+    open_for_time_entry boolean,
+    compliance          boolean,
+    time_constrained    boolean
 );
 
 alter table projects
@@ -274,6 +276,42 @@ create table if not exists project_strategic_alignments
 );
 
 alter table project_strategic_alignments
+    owner to vitae;
+
+create table if not exists sponsor_areas
+(
+    id              bigserial    not null
+        constraint sponsor_areas_pk
+            primary key,
+    created_at      timestamp with time zone default now(),
+    updated_at      timestamp with time zone,
+    deleted_at      timestamp with time zone,
+    uuid            uuid         not null,
+    name            varchar(100) not null,
+    organization_id bigint       not null
+        constraint sponsor_areas_organizations_id_fk
+            references organizations
+);
+
+alter table sponsor_areas
+    owner to vitae;
+
+create unique index if not exists sponsor_areas_uuid_uindex
+    on sponsor_areas (uuid);
+
+create table if not exists project_sponsor_areas
+(
+    project_id      bigint not null
+        constraint project_sponsor_areas_projects_id_fk
+            references projects,
+    sponsor_area_id bigint not null
+        constraint project_sponsor_areas_sponsor_areas_id_fk
+            references sponsor_areas,
+    constraint project_sponsor_areas_pk
+        primary key (project_id, sponsor_area_id)
+);
+
+alter table project_sponsor_areas
     owner to vitae;
 
 create function uuid_nil() returns uuid

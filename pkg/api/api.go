@@ -2,10 +2,22 @@ package api
 
 import (
 	"fmt"
+
+	"github.com/jpurdie/authapi/pkg/api/profile"
+	profilel "github.com/jpurdie/authapi/pkg/api/profile/logging"
+	profilet "github.com/jpurdie/authapi/pkg/api/profile/transport"
+
+	"github.com/jpurdie/authapi/pkg/api/user"
+	userl "github.com/jpurdie/authapi/pkg/api/user/logging"
+	usert "github.com/jpurdie/authapi/pkg/api/user/transport"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/jpurdie/authapi/pkg/api/invitation"
 	invitationL "github.com/jpurdie/authapi/pkg/api/invitation/logging"
 	invitationT "github.com/jpurdie/authapi/pkg/api/invitation/transport"
+	projectDB "github.com/jpurdie/authapi/pkg/api/project/platform/pgsql"
+	sponsAreaDB "github.com/jpurdie/authapi/pkg/api/sponsorarea/platform/pgsql"
+	saDB "github.com/jpurdie/authapi/pkg/api/strategicalignment/platform/pgsql"
 	userDB "github.com/jpurdie/authapi/pkg/api/user/platform/pgsql"
 
 	"github.com/jpurdie/authapi/pkg/api/organization"
@@ -16,17 +28,21 @@ import (
 	pingl "github.com/jpurdie/authapi/pkg/api/ping/logging"
 	pingt "github.com/jpurdie/authapi/pkg/api/ping/transport"
 
-	"github.com/jpurdie/authapi/pkg/api/profile"
-	profilel "github.com/jpurdie/authapi/pkg/api/profile/logging"
-	profilet "github.com/jpurdie/authapi/pkg/api/profile/transport"
-
 	"github.com/jpurdie/authapi/pkg/api/project"
 	projectL "github.com/jpurdie/authapi/pkg/api/project/logging"
 	projectT "github.com/jpurdie/authapi/pkg/api/project/transport"
 
-	"github.com/jpurdie/authapi/pkg/api/user"
-	userl "github.com/jpurdie/authapi/pkg/api/user/logging"
-	usert "github.com/jpurdie/authapi/pkg/api/user/transport"
+	"github.com/jpurdie/authapi/pkg/api/strategicalignment"
+	strategicAlignmentL "github.com/jpurdie/authapi/pkg/api/strategicalignment/logging"
+	strategicAlignmentT "github.com/jpurdie/authapi/pkg/api/strategicalignment/transport"
+
+	"github.com/jpurdie/authapi/pkg/api/capacityplan"
+	capacityPlanL "github.com/jpurdie/authapi/pkg/api/capacityplan/logging"
+	capacityPlanT "github.com/jpurdie/authapi/pkg/api/capacityplan/transport"
+
+	"github.com/jpurdie/authapi/pkg/api/sponsorarea"
+	sponsorAreaL "github.com/jpurdie/authapi/pkg/api/sponsorarea/logging"
+	sponsorAreaT "github.com/jpurdie/authapi/pkg/api/sponsorarea/transport"
 
 	"github.com/jpurdie/authapi/pkg/utl/config"
 	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
@@ -64,6 +80,11 @@ func Start(cfg *config.Configuration) error {
 	/* Begin Ping Logic */
 	pingt.NewHTTP(pingl.New(ping.Initialize(dbx), log), v1)
 
+	/* Begin Profile Struct */
+	profileStruct := profile.Initialize(dbx, userDB.User{})
+	profileLogger := profilel.New(profileStruct, log)
+	profilet.NewHTTP(profileLogger, v1, dbx)
+
 	/* Begin User Logic */
 	userStruct := user.Initialize(dbx)
 	userLogger := userl.New(userStruct, log)
@@ -75,17 +96,26 @@ func Start(cfg *config.Configuration) error {
 	invitationT.NewHTTP(invitationLogger, v1, dbx)
 
 	///* Begin Project Logic */
-	projectStruct := project.Initialize(dbx)
+	projectStruct := project.Initialize(dbx, saDB.StrategicAlignment{}, sponsAreaDB.SponsorArea{})
 	projectLogger := projectL.New(projectStruct, log)
 	projectT.NewHTTP(projectLogger, v1, dbx)
-	//
-	///* Begin Strategic Alignment Logic */
-	//alignmentStruct := strategicalignment.Initialize(dbx)
-	//alignmentLogger := strategicL.New(alignmentStruct, log)
-	//strategicT.NewHTTP(alignmentLogger, v1, dbx)
+
+	/* Begin Capacity Planning Logic */
+	capacityPlanningStruct := capacityplan.Initialize(dbx, userDB.User{}, projectDB.Project{})
+	capacityPlanLogger := capacityPlanL.New(capacityPlanningStruct, log)
+	capacityPlanT.NewHTTP(capacityPlanLogger, v1, dbx)
+
+	/* Begin Strategic Alignment Logic */
+	alignmentStruct := strategicalignment.Initialize(dbx)
+	alignmentLogger := strategicAlignmentL.New(alignmentStruct, log)
+	strategicAlignmentT.NewHTTP(alignmentLogger, v1, dbx)
+
+	/* Begin Sponsor Area Logic */
+	sponsorAreaStruct := sponsorarea.Initialize(dbx)
+	sponsorAreaLogger := sponsorAreaL.New(sponsorAreaStruct, log)
+	sponsorAreaT.NewHTTP(sponsorAreaLogger, v1, dbx)
 
 	orgt.NewHTTP(orgl.New(organization.Initialize(dbx), log), v1)
-	profilet.NewHTTP(profilel.New(profile.Initialize(dbx), log), v1)
 
 	//everything after here requires auth
 	authMiddleware := authMw.Authenticate()

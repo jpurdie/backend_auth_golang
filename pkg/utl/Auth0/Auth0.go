@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/jpurdie/authapi"
-	"github.com/jpurdie/authapi/pkg/utl/redis"
-	"github.com/segmentio/encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jpurdie/authapi"
+	"github.com/jpurdie/authapi/pkg/utl/redis"
+	"github.com/segmentio/encoding/json"
 )
 
 var ctx = context.Background()
@@ -240,6 +243,100 @@ func DeleteUser(u authapi.User) error {
 	var vResp verEmailResp
 	json.NewDecoder(res.Body).Decode(&vResp)
 
+	return nil
+
+}
+
+type updateUserReq struct {
+	Email     string `json:"email"`
+	FirstName string `json:"given_name"`
+	LastName  string `json:"family_name"`
+	ClientID  string `json:"client_id"`
+	Name      string `json:"name"`
+}
+type updateUserResp struct {
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	UpdatedAt     string `json:"updated_at"`
+	FirstName     string `json:"given_name"`
+	LastName      string `json:"family_name"`
+}
+
+func UpdateUser(u authapi.User) error {
+	op := "UpdateUser"
+	log.Println("Updating Auth0 user " + u.ExternalID)
+	accessToken, err := FetchAccessToken()
+	if err != nil {
+		return ErrUnableToReachAuth0
+	}
+	url := "https://" + os.Getenv("AUTH0_DOMAIN") + "/api/v2/users/" + u.ExternalID
+	b := new(bytes.Buffer)
+
+	updateUserReq := updateUserReq{
+		Email:     u.Email,
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Name:      u.FirstName + " " + u.LastName,
+		ClientID:  os.Getenv("AUTH0_CLIENT_ID"),
+	}
+	timeout := time.Duration(10 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+
+	json.NewEncoder(b).Encode(updateUserReq)
+	log.Println("Inside UpdateUser()")
+
+	req, err := http.NewRequest("PATCH", url, b)
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return &authapi.Error{
+			Op:   op,
+			Code: authapi.EINTERNAL,
+			Err:  ErrUnableToCreateUser,
+		}
+	}
+
+	var cur updateUserResp
+	err = json.NewDecoder(res.Body).Decode(&cur)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(cur)
+	return nil
+
+}
+
+func InitiatePasswordReset(u authapi.User) error {
+	log.Println("Sending password reset request to Auth0 user " + u.Email)
+
+	url := "https://" + os.Getenv("AUTH0_DOMAIN") + "/dbconnections/change_password"
+
+	payload := strings.NewReader("{\"client_id\": \"" + os.Getenv("AUTH0_CLIENT_ID") + "\",\"email\": \"" + u.Email + "\",\"connection\": \"" + os.Getenv("AUTH0_CONNECTION") + "\"}")
+
+	req, _ := http.NewRequest("POST", url, payload)
+
+	req.Header.Add("content-type", "application/json")
+
+	res, _ := http.DefaultClient.Do(req)
+
+	defer res.Body.Close()
+	body, _ := ioutil.ReadAll(res.Body)
+
+	fmt.Println(res)
+	fmt.Println(string(body))
 	return nil
 
 }

@@ -18,3 +18,7 @@ var (
 func (p Profile) Create(c echo.Context, profile authapi.Profile) error {
 	return p.pdb.Create(*p.db, profile)
 }
+
+func (p Profile) FetchProfileByExternalID(c echo.Context, externalID string) (authapi.Profile, error) {
+	return p.pdb.FetchProfileByExternalID(*p.db, externalID)
+}

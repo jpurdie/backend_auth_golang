@@ -5,6 +5,10 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
+
+	authMw "github.com/jpurdie/authapi/pkg/utl/middleware/auth"
+
 	"github.com/go-playground/validator"
 	"github.com/google/uuid"
 	"github.com/jpurdie/authapi"
@@ -19,20 +23,28 @@ type HTTP struct {
 	svc profile.Service
 }
 
-func NewHTTP(svc profile.Service, er *echo.Group) {
+func NewHTTP(svc profile.Service, er *echo.Group, db *sqlx.DB) {
 	h := HTTP{svc}
 	pr := er.Group("/profiles")
 	pr.POST("/", h.createAuthProfile)
-
+	pr.POST("/validationemails", h.sendValidationEmail, authMw.Authenticate())
 }
 
 var (
 	ErrEmailAlreadyExists   = authapi.Error{CodeInt: http.StatusConflict, Message: "The user already exists"}
 	ErrPasswordsNotMatching = authapi.Error{CodeInt: http.StatusConflict, Message: "Passwords do not match"}
 	ErrPasswordNotValid     = authapi.Error{CodeInt: http.StatusConflict, Message: "Password is not in the required format"}
-	UnknownError            = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering."}
+	UnknownError            = authapi.Error{CodeInt: http.StatusInternalServerError, Message: "There was a problem registering."}
 	ErrAuth0Unknown         = authapi.Error{CodeInt: http.StatusConflict, Message: "There was a problem registering with provider."}
 )
+
+type userResp struct {
+	User authapi.User `json:"user"`
+}
+
+type fetchUserRes struct {
+	User userResp `json:"user"`
+}
 
 type createOrgUserReq struct {
 	OrganizationName string `json:"orgName" validate:"required,min=4"`
@@ -127,4 +139,16 @@ func (h *HTTP) createAuthProfile(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, "")
 
+}
+
+func (h *HTTP) sendValidationEmail(c echo.Context) error {
+	externalID := c.Get("sub").(string)
+	u := authapi.User{}
+	u.ExternalID = externalID
+	err := auth0.SendVerificationEmail(u)
+	if err != nil {
+		log.Println(err)
+		return c.JSON(http.StatusInternalServerError, ErrAuth0Unknown)
+	}
+	return c.NoContent(http.StatusOK)
 }

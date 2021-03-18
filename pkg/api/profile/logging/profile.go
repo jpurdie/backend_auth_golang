@@ -39,3 +39,17 @@ func (ls *LogService) Change(c echo.Context, p authapi.Profile) (err error) {
 	}(time.Now())
 	return ls.Service.Create(c, p)
 }
+
+func (ls *LogService) FetchProfileByExternalID(c echo.Context, externalID string) (p authapi.Profile, err error) {
+	defer func(begin time.Time) {
+		ls.logger.Log(
+			c,
+			name, "FetchProfile request", err,
+			map[string]interface{}{
+				"externalID": externalID,
+				"took":       time.Since(begin),
+			},
+		)
+	}(time.Now())
+	return ls.Service.FetchProfileByExternalID(c, externalID)
+}

@@ -9,5 +9,5 @@ type Organization struct {
 	Name    string    `json:"name"  db:"name"`
 	Active  bool      `json:"active"  db:"active"`
 	Profile []Profile `json:"-" pg:",many2many:profiles"`
-	UUID    uuid.UUID `json:"organizationID"  db:"uuid"`
+	UUID    uuid.UUID `json:"id"  db:"uuid"`
 }

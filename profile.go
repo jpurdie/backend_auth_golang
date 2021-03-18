@@ -7,7 +7,7 @@ import (
 // Company represents Profile model
 type Profile struct {
 	Base
-	UUID           uuid.UUID     `json:"profileID" db:"uuid"`
+	UUID           uuid.UUID     `json:"-" db:"uuid"`
 	UserID         int           `json:"-" db:"user_id"`
 	User           *User         `json:"-"`
 	OrganizationID int           `json:"-" db:"organization_id"`
